@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 84% 4.9%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 94.1%;
+  --radius: 0.75rem;
+}
+
+/* Mejorar el smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+  /* Mejorar el scroll en mobile */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mantener todo tu CSS existente... */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Fallback para navegadores que no soportan backdrop-filter */
+  @supports not (backdrop-filter: blur(10px)) {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* Fallback para navegadores sin soporte */
+  @supports not (background-clip: text) {
+    color: #667eea;
+  }
+}
+
+.event-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.event-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+}
+
+.floating-element {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(102, 126, 234, 0.8); }
+}
+
+/* Agregar clases de utilidad para EventRadar */
+.eventradars-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.text-eventradars {
+  color: #667eea;
+}
+
+/* Estilos personalizados para Leaflet Popup */
+.leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+  border: none !important;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.1) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #6b7280 !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  padding: 8px 12px !important;
+  margin-right: 4px !important;
+  margin-top: 4px !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-popup-close-button:hover {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+/* Mobile Safe Area CSS - Solución para navegación móvil */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Asegurar que el contenido no se corte en móviles */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 100px !important; /* Más espacio para navegación del navegador */
+  }
+  
+  .mobile-safe-footer {
+    margin-bottom: 100px !important;
+  }
+  
+  /* Ajustar el mapa en móviles */
+  .leaflet-container {
+    margin-bottom: 30px;
+    height: calc(100vh - 140px) !important; /* Ajustar altura para móviles */
+  }
+  
+  /* Asegurar que los botones flotantes no interfieran */
+  .fixed.bottom-6 {
+    bottom: 120px !important;
+  }
+  
+  /* Optimizar elementos overlay para móviles */
+  .absolute.top-4 {
+    top: 8px;
+  }
+  
+  .absolute.top-16 {
+    top: 60px;
+  }
+  
+  /* Mejorar visibilidad en móviles */
+  .bg-black\/70 {
+    background-color: rgba(0, 0, 0, 0.85) !important;
+  }
+}
+
+/* Animación para el modal de navegación */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
