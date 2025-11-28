@@ -1,0 +1,402 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Bot, User, Sparkles, X, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from './ui/button';
+import aiService from '../services/aiService';
+import { useNavigate } from 'react-router-dom';
+
+/**
+ * 🤖 AI EVENT ASSISTANT CHAT
+ * Chat interactivo con IA para buscar eventos
+ */
+const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => {
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: '¡Hola! 👋 Soy tu asistente de EventRadar. ¿Qué tipo de evento estás buscando hoy?',
+      timestamp: new Date()
+    }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [suggestedEvents, setSuggestedEvents] = useState([]);
+  const messagesEndRef = useRef(null);
+  const navigate = useNavigate();
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const getMockEventReply = (message, availableEvents) => {
+    const m = message.toLowerCase();
+    
+    // Detectar solicitud de contacto humano
+    if (m.match(/(hablar con|contactar|supervisor|ejecutivo|humano|persona real|agente|ayuda humana|asistente humano)/)) {
+      return '👤 ¡Claro! Si necesitas hablar con un asistente humano, contáctanos directamente:\n\n📧 Email: contactoempresa@eventradar.com\n\nNuestro equipo te ayudará personalmente. ¿Hay algo más que pueda hacer por ti mientras tanto?';
+    }
+    
+    if (m.includes('música') || m.includes('concierto') || m.includes('music')) {
+      const musicEvents = availableEvents.filter(e => 
+        e.event_categories?.name?.toLowerCase().includes('música') || 
+        e.title?.toLowerCase().includes('música') ||
+        e.title?.toLowerCase().includes('concierto')
+      );
+      
+      if (musicEvents.length > 0) {
+        return `🎵 Encontré ${musicEvents.length} eventos de música. Te recomiendo "${musicEvents[0].title}" - ${musicEvents[0].location}. ¿Quieres ver más opciones de música?`;
+      }
+      return '🎵 Los eventos de música son muy populares. Filtra por categoría "Música" en la página principal para ver todos los conciertos disponibles. ¿Te interesa algún género específico?';
+    }
+    
+    if (m.includes('gratis') || m.includes('free') || m.includes('sin costo')) {
+      const freeEvents = availableEvents.filter(e => e.price === 0 || e.price === '0');
+      
+      if (freeEvents.length > 0) {
+        return `🎁 ¡Hay ${freeEvents.length} eventos gratuitos! Te sugiero "${freeEvents[0].title}". Usa el filtro de precio "$0" en la página principal para verlos todos.`;
+      }
+      return '🎁 Para eventos gratuitos, usa el filtro de precio y selecciona "$0". ¡Siempre hay eventos sin costo disponibles!';
+    }
+    
+    if (m.includes('hoy') || m.includes('today')) {
+      const today = new Date().toISOString().split('T')[0];
+      const todayEvents = availableEvents.filter(e => e.date?.startsWith(today));
+      
+      if (todayEvents.length > 0) {
+        return `📅 ¡Hay ${todayEvents.length} eventos hoy! "${todayEvents[0].title}" en ${todayEvents[0].location}. ¿Quieres más detalles?`;
+      }
+      return '📅 Para eventos de hoy, usa el filtro de fecha en la página principal. ¡Revisa qué está pasando ahora!';
+    }
+    
+    if (m.includes('fin de semana') || m.includes('weekend') || m.includes('sábado') || m.includes('domingo')) {
+      return '🎉 Los fines de semana están llenos de eventos. Usa el filtro de fecha para ver todo lo disponible para sábado y domingo. ¿Prefieres eventos de día o de noche?';
+    }
+    
+    if (m.includes('deporte') || m.includes('fútbol') || m.includes('basketball') || m.includes('sport')) {
+      const sportEvents = availableEvents.filter(e => 
+        e.event_categories?.name?.toLowerCase().includes('deporte') ||
+        e.title?.toLowerCase().includes('deporte') ||
+        e.title?.toLowerCase().includes('fútbol')
+      );
+      
+      if (sportEvents.length > 0) {
+        return `⚽ Hay ${sportEvents.length} eventos deportivos. "${sportEvents[0].title}" podría interesarte. Filtra por "Deportes" para ver partidos y torneos.`;
+      }
+      return '⚽ Revisa la categoría "Deportes" para ver partidos, torneos y actividades deportivas. ¿Buscas algo específico como fútbol o basketball?';
+    }
+    
+    if (m.includes('gastronomía') || m.includes('comida') || m.includes('food') || m.includes('restaurant')) {
+      const foodEvents = availableEvents.filter(e => 
+        e.event_categories?.name?.toLowerCase().includes('gastronomía') ||
+        e.title?.toLowerCase().includes('gastronóm')
+      );
+      
+      if (foodEvents.length > 0) {
+        return `🍽️ Tengo ${foodEvents.length} eventos gastronómicos. "${foodEvents[0].title}" se ve delicioso. ¿Quieres conocer más opciones culinarias?`;
+      }
+      return '🍽️ Los eventos gastronómicos están en la categoría "Gastronomía". Encuentra festivales de comida, catas y experiencias culinarias. ¿Alguna cocina en particular?';
+    }
+    
+    if (m.includes('arte') || m.includes('art') || m.includes('exposición')) {
+      return '🎨 Los eventos de arte están en pleno auge. Filtra por "Arte" para ver exposiciones, galerías y talleres creativos. ¿Prefieres arte contemporáneo o clásico?';
+    }
+    
+    // Respuesta por defecto con sugerencias
+    const suggestions = [];
+    if (availableEvents.length > 0) {
+      suggestions.push(`"${availableEvents[0].title}"`);
+      if (availableEvents.length > 1) suggestions.push(`"${availableEvents[1].title}"`);
+    }
+    
+    if (suggestions.length > 0) {
+      return `👋 Puedo ayudarte a encontrar eventos. Algunos populares: ${suggestions.join(', ')}. Prueba buscar por categoría (música, deportes, arte, gastronomía) o pregúntame sobre eventos gratuitos, de hoy, o del fin de semana.\n\n📧 ¿Necesitas ayuda específica? Contáctanos: contactoempresa@eventradar.com`;
+    }
+    
+    return '👋 ¡Hola! Puedo ayudarte a encontrar eventos. Prueba preguntando por:\n🎵 Música o conciertos\n⚽ Deportes\n🎨 Arte\n🍽️ Gastronomía\n🎁 Eventos gratuitos\n📅 Eventos de hoy o del fin de semana\n\n¿Qué te interesa?\n\n💡 Si no encuentro lo que buscas, escríbenos a: contactoempresa@eventradar.com';
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading) return;
+
+    // Agregar mensaje del usuario
+    const userMessage = {
+      role: 'user',
+      content: inputMessage,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    const messageToSend = inputMessage;
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      // Llamar a la IA
+      console.log('[AIAssistant] Enviando mensaje a IA:', messageToSend);
+      console.log('[AIAssistant] Eventos disponibles:', events.length);
+      
+      const response = await aiService.chatWithAssistant(
+        messageToSend,
+        events,
+        userPreferences
+      );
+
+      console.log('[AIAssistant] Respuesta de IA:', response);
+
+      // Agregar respuesta de la IA
+      const assistantMessage = {
+        role: 'assistant',
+        content: response.message || response.reply || (response.description || ''),
+        suggestedEvents: response.suggestedEvents || [],
+        timestamp: new Date(),
+        variations: response.variants || response.descriptions || null
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      // Guardar eventos sugeridos
+      if (response.suggestedEvents && response.suggestedEvents.length > 0) {
+        const suggested = events.filter(e => 
+          response.suggestedEvents.includes(e.id)
+        );
+        setSuggestedEvents(suggested);
+      }
+      // Si hay variaciones de descripción, abrir UI para elegir
+      if (assistantMessage.variations && assistantMessage.variations.length > 0) {
+        // Insert a system message prompting user to choose one
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'He generado varias versiones. Puedes tocar una para copiarla al cuadro de texto y editarla antes de publicar.',
+          timestamp: new Date()
+        }]);
+      }
+
+    } catch (error) {
+      console.error('[AIAssistant] Error en chat:', error);
+      
+      // Usar respuesta mock local como fallback
+      const mockReply = getMockEventReply(messageToSend, events);
+      
+      const assistantMessage = {
+        role: 'assistant',
+        content: mockReply,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickAction = (action) => {
+    setInputMessage(action);
+  };
+
+  const handleEventClick = (eventId) => {
+    navigate(`/events/${eventId}`);
+    onClose && onClose();
+  };
+
+  const quickActions = [
+    '🎵 Eventos de música este fin de semana',
+    '🎨 Eventos de arte gratis',
+    '⚽ Eventos deportivos en Santiago',
+    '🍕 Eventos gastronómicos'
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="w-full max-w-2xl h-[600px] bg-gradient-to-br from-purple-900/95 via-indigo-900/95 to-blue-900/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-white/20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 flex items-center justify-between border-b border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-pulse">
+                <Bot className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  EventAssistant
+                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                </h2>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-white/80">
+                    Powered by {aiService.getModelName()}
+                  </p>
+                  {aiService.isConfigured() && (
+                    <span className={`
+                      text-xs px-2 py-0.5 rounded-full font-semibold
+                      ${aiService.getProvider() === 'gemini' ? 'bg-green-500/20 text-green-300 border border-green-400/30' : ''}
+                      ${aiService.getProvider() === 'deepseek' ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30' : ''}
+                      ${aiService.getProvider() === 'openai' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : ''}
+                    `}>
+                      {aiService.getProvider() === 'gemini' && '✨ Gemini'}
+                      {aiService.getProvider() === 'deepseek' && '🚀 DeepSeek'}
+                      {aiService.getProvider() === 'openai' && '🤖 OpenAI'}
+                    </span>
+                  )}
+                  {!aiService.isConfigured() && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                      ⚠️ No configurado
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex gap-3 ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                {message.role === 'assistant' && (
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                )}
+
+                <div
+                  className={`max-w-[80%] rounded-2xl p-4 ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                      : 'bg-white/10 backdrop-blur-sm text-white border border-white/20'
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                  
+                  {/* Eventos sugeridos */}
+                  {message.suggestedEvents && message.suggestedEvents.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
+                      <p className="text-xs font-semibold text-white/80">Eventos sugeridos:</p>
+                      {events.filter(e => message.suggestedEvents.includes(e.id)).map(event => (
+                        <button
+                          key={event.id}
+                          onClick={() => handleEventClick(event.id)}
+                          className="w-full text-left p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                        >
+                          <p className="text-sm font-semibold text-white">{event.title}</p>
+                          <p className="text-xs text-white/70">
+                            {event.event_categories?.name} • ${event.price}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-white/50 mt-2">
+                    {message.timestamp.toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+
+                {message.role === 'user' && (
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {isLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                  <div className="flex gap-2">
+                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Quick Actions */}
+          {messages.length <= 2 && (
+            <div className="px-6 pb-4">
+              <p className="text-xs text-white/60 mb-2">Acciones rápidas:</p>
+              <div className="flex flex-wrap gap-2">
+                {quickActions.map((action, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleQuickAction(action)}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs text-white transition-colors border border-white/20"
+                  >
+                    {action}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input Area */}
+          <div className="p-6 border-t border-white/20 bg-black/20">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Escribe tu pregunta sobre eventos..."
+                className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-400 backdrop-blur-sm"
+                disabled={isLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={isLoading || !inputMessage.trim()}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+export default AIAssistant;

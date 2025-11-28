@@ -1,0 +1,166 @@
+{
+  "faqs": [
+    {
+      "id": "pricing-basic",
+      "tags": ["precio", "básico", "patrocinado", "costo"],
+      "question": "¿Cuánto cuesta el plan Básico?",
+      "answer": "El plan Básico cuesta $5 por evento individual. También ofrecemos paquetes: Pack de 3 eventos por $12 (ahorra 20%) y Pack de 5 eventos por $18 (ahorra 28%). Este plan incluye badge 'Patrocinado', aparición garantizada en el mapa, y +20% boost en recomendaciones."
+    },
+    {
+      "id": "pricing-featured",
+      "tags": ["precio", "destacado", "featured", "costo", "popular"],
+      "question": "¿Cuánto cuesta el plan Destacado?",
+      "answer": "El plan Destacado cuesta $15 por evento. Pack de 3 eventos: $36 (20% descuento) y Pack de 5: $54 (28% descuento). Es nuestro plan más popular e incluye badge 'Destacado' 🔥, visibilidad garantizada en mapa, +100% boost en recomendaciones, notificaciones push a usuarios cercanos, y analíticas completas."
+    },
+    {
+      "id": "pricing-premium",
+      "tags": ["precio", "premium", "caro", "mejor"],
+      "question": "¿Cuánto cuesta el plan Premium?",
+      "answer": "El plan Premium cuesta $30 por evento. Pack de 3: $72 (20% off) y Pack de 5: $108 (28% off). Ofrece máxima visibilidad: badge Premium ⭐, prioridad absoluta en mapa, +200% boost en recomendaciones, notificaciones push a TODOS los usuarios, ventana emergente promocional, dashboard de analíticas avanzadas, y estilo personalizado."
+    },
+    {
+      "id": "pricing-free",
+      "tags": ["gratis", "free", "sin costo"],
+      "question": "¿Puedo publicar eventos gratis?",
+      "answer": "¡Sí! El plan Gratuito te permite publicar eventos sin costo. Incluye: ver eventos ilimitados, guardar favoritos, recomendaciones IA, y aparición en la pestaña Eventos. Sin embargo, la aparición en el mapa no está garantizada (solo si hay espacio), y no incluye notificaciones push ni analíticas."
+    },
+    {
+      "id": "payment-methods",
+      "tags": ["pago", "tarjeta", "mercado pago", "stripe", "cómo pagar"],
+      "question": "¿Qué métodos de pago aceptan?",
+      "answer": "Aceptamos múltiples formas de pago: tarjetas de crédito y débito (Visa, Mastercard, American Express) mediante Stripe, y también Mercado Pago para mayor comodidad en Latinoamérica. Todos los pagos son seguros y procesados con encriptación."
+    },
+    {
+      "id": "package-discount",
+      "tags": ["descuento", "ahorro", "paquete", "pack"],
+      "question": "¿Hay descuentos por comprar varios eventos?",
+      "answer": "¡Sí! Ofrecemos paquetes con descuentos: Pack de 3 eventos (ahorra 20%) y Pack de 5 eventos (ahorra 28%, nuestro mejor precio). Los paquetes aplican a todos los planes (Básico, Destacado y Premium)."
+    },
+    {
+      "id": "features-basic",
+      "tags": ["características", "básico", "incluye", "beneficios"],
+      "question": "¿Qué incluye el plan Básico?",
+      "answer": "El plan Básico incluye: todo lo del plan Gratuito + badge 'Patrocinado', aparición garantizada en el mapa, +20% boost en recomendaciones IA, y prioridad media en listados de eventos. Es ideal para eventos locales que buscan visibilidad básica."
+    },
+    {
+      "id": "features-featured",
+      "tags": ["características", "destacado", "incluye", "beneficios"],
+      "question": "¿Qué incluye el plan Destacado?",
+      "answer": "El plan Destacado incluye: todo del plan Básico + badge 'Destacado' 🔥, siempre visible en mapa, +100% boost en recomendaciones, Top 5 en lista de eventos, notificaciones push a usuarios cercanos (geofencing), aparición en carrusel principal, analíticas completas, y geofencing inteligente. Perfecto para eventos medianos y grandes."
+    },
+    {
+      "id": "features-premium",
+      "tags": ["características", "premium", "incluye", "beneficios", "mejor"],
+      "question": "¿Qué incluye el plan Premium?",
+      "answer": "El plan Premium incluye: todo del Destacado + badge 'Premium' ⭐, máxima prioridad en mapa, +200% boost en recomendaciones, posición fija en primera posición, notificaciones push a TODOS los usuarios, ventana emergente promocional, dashboard de analíticas avanzadas con métricas detalladas, colores y estilo personalizado para tu evento, y geofencing + retargeting. Ideal para eventos masivos y corporativos."
+    },
+    {
+      "id": "notifications",
+      "tags": ["notificaciones", "push", "avisos"],
+      "question": "¿Cómo funcionan las notificaciones push?",
+      "answer": "Las notificaciones push se envían automáticamente según tu plan: el plan Destacado notifica a usuarios cercanos (geofencing inteligente), mientras que el Premium notifica a TODOS los usuarios registrados. Las notificaciones incluyen nombre del evento, ubicación y horario."
+    },
+    {
+      "id": "analytics",
+      "tags": ["analíticas", "estadísticas", "métricas", "dashboard"],
+      "question": "¿Qué son las analíticas?",
+      "answer": "Las analíticas te permiten ver el rendimiento de tu evento: vistas, clics, guardados en favoritos, tasa de conversión, origen geográfico de los usuarios, y más. El plan Destacado incluye analíticas completas, y el Premium ofrece un dashboard avanzado con métricas en tiempo real y reportes exportables."
+    },
+    {
+      "id": "geofencing",
+      "tags": ["geofencing", "ubicación", "cercanía"],
+      "question": "¿Qué es el geofencing?",
+      "answer": "El geofencing es una tecnología que detecta cuando usuarios están cerca de tu evento (radio configurable) y les envía notificaciones personalizadas. El plan Destacado incluye geofencing inteligente, y el Premium añade retargeting (recordatorios a usuarios que mostraron interés)."
+    },
+    {
+      "id": "refund-policy",
+      "tags": ["reembolso", "devolución", "cancelar"],
+      "question": "¿Tienen política de reembolso?",
+      "answer": "Ofrecemos reembolso completo si cancelas tu promoción dentro de las primeras 24 horas después de la compra y antes de que el evento sea publicado. Una vez publicado, no hay reembolsos, pero puedes modificar fechas o transferir el crédito a otro evento."
+    },
+    {
+      "id": "event-duration",
+      "tags": ["duración", "tiempo", "cuánto dura"],
+      "question": "¿Cuánto tiempo dura la promoción?",
+      "answer": "La promoción es válida desde el momento en que publicas tu evento hasta que este termina (fecha y hora de finalización del evento). Si compras un paquete, cada crédito se activa individualmente al publicar cada evento."
+    },
+    {
+      "id": "support",
+      "tags": ["soporte", "ayuda", "contacto"],
+      "question": "¿Cómo puedo contactar soporte?",
+      "answer": "Ofrecemos soporte 24/7 mediante: este chat (asistente IA), email a soporte@eventradar.com, y WhatsApp Business al +56 9 XXXX XXXX (respuesta en menos de 1 hora). Para problemas técnicos, incluye tu ID de usuario y capturas de pantalla."
+    },
+    {
+      "id": "recommendation-boost",
+      "tags": ["boost", "recomendaciones", "IA", "algoritmo"],
+      "question": "¿Qué es el boost en recomendaciones?",
+      "answer": "El boost aumenta la probabilidad de que tu evento aparezca en las recomendaciones personalizadas que nuestra IA genera para cada usuario. Básico: +20%, Destacado: +100%, Premium: +200%. Esto multiplica tu alcance orgánico sin costo adicional."
+    },
+    {
+      "id": "badge-meaning",
+      "tags": ["badge", "insignia", "etiqueta"],
+      "question": "¿Qué significan los badges?",
+      "answer": "Los badges son etiquetas visuales que destacan tu evento: 'Patrocinado' ✨ (plan Básico), 'Destacado' 🔥 (plan Destacado), y 'Premium' ⭐ (plan Premium). Aparecen en el listado, mapa y detalle del evento, generando más confianza y clics."
+    },
+    {
+      "id": "best-plan",
+      "tags": ["mejor plan", "recomendación", "cuál elegir"],
+      "question": "¿Qué plan me recomiendan?",
+      "answer": "Depende de tus objetivos: plan Básico para eventos locales pequeños (menos de 100 personas), Destacado para eventos medianos o con público específico (100-500 personas, ideal para conciertos, talleres), y Premium para eventos masivos o corporativos (más de 500 personas, festivales, conferencias). El plan Destacado es el más popular por su excelente relación precio-beneficios."
+    },
+    {
+      "id": "upgrade-downgrade",
+      "tags": ["cambiar plan", "upgrade", "mejorar"],
+      "question": "¿Puedo cambiar de plan después de pagar?",
+      "answer": "Sí, puedes hacer upgrade a un plan superior en cualquier momento pagando la diferencia prorrateada. Downgrade solo está disponible antes de publicar el evento. Contacta a soporte para gestionar cambios de plan."
+    },
+    {
+      "id": "multiple-events",
+      "tags": ["varios eventos", "múltiples", "cantidad"],
+      "question": "¿Puedo promocionar varios eventos a la vez?",
+      "answer": "¡Claro! Puedes comprar paquetes (3 o 5 eventos) o adquirir promociones individuales para cada evento. Los paquetes no expiran y puedes usarlos cuando quieras. También ofrecemos descuentos corporativos para organizadores frecuentes (contacta ventas)."
+    }
+  ],
+  "policies": [
+    {
+      "title": "Privacidad de Datos",
+      "content": "Protegemos tu información personal según GDPR y leyes locales. No compartimos datos con terceros sin consentimiento."
+    },
+    {
+      "title": "Términos de Uso",
+      "content": "Al usar EventRadar aceptas nuestros términos: contenido apropiado, datos verídicos, y respeto a la comunidad. Nos reservamos el derecho de remover eventos que violen políticas."
+    },
+    {
+      "title": "Pagos Seguros",
+      "content": "Procesamos pagos mediante Stripe (PCI DSS Level 1) y Mercado Pago. No almacenamos datos de tarjetas en nuestros servidores."
+    }
+  ],
+  "pricing_tiers": {
+    "free": {
+      "name": "Gratis",
+      "price": 0,
+      "features": ["Ver eventos ilimitados", "Guardar favoritos", "Recomendaciones IA", "Aparece en pestaña Eventos"]
+    },
+    "basic": {
+      "name": "Básico",
+      "price": 5,
+      "pack_3": 12,
+      "pack_5": 18,
+      "features": ["Badge Patrocinado", "Mapa garantizado", "+20% boost", "Prioridad media"]
+    },
+    "featured": {
+      "name": "Destacado",
+      "price": 15,
+      "pack_3": 36,
+      "pack_5": 54,
+      "features": ["Badge Destacado 🔥", "Siempre visible", "+100% boost", "Push cercanos", "Top 5", "Analíticas"]
+    },
+    "premium": {
+      "name": "Premium",
+      "price": 30,
+      "pack_3": 72,
+      "pack_5": 108,
+      "features": ["Badge Premium ⭐", "Máxima prioridad", "+200% boost", "Push a todos", "Popup", "Dashboard", "Personalizado"]
+    }
+  }
+}
