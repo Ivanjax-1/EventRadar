@@ -1,14 +1,35 @@
-import express from 'express';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
-import { z } from 'zod';
+const express = require('express');
+const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
+const { z } = require('zod');
+const handleChatRequest = require('./routes/chat');
+const Stripe = require('stripe');
+const { MercadoPagoConfig, Preference } = require('mercadopago');
+const { AIService } = require('./services/aiService');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Inicializar servicios de pago
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY) 
+  : null;
+
+const mercadopagoClient = process.env.MERCADOPAGO_ACCESS_TOKEN
+  ? new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN })
+  : null;
+
+// Inicializar servicio de IA
+const aiService = new AIService();
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Rutas de geocodificación
+const geocodeRouter = require('./routes/geocode');
+app.use('/api/geocode', geocodeRouter);
 
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project.supabase.co';
@@ -232,6 +253,174 @@ app.delete('/api/events/:id/leave', async (req, res) => {
   } catch (error) {
     console.error('Error leaving event:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============ CHAT ENDPOINT ============
+app.post('/api/chat', async (req, res) => {
+  await handleChatRequest(req, res, aiService);
+});
+
+// ============ PAYMENT ENDPOINTS ============
+
+// Stripe: Create Payment Intent
+app.post('/api/create-payment-intent', async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(503).json({ 
+        error: 'Stripe no está configurado. Por favor, configura STRIPE_SECRET_KEY en las variables de entorno.' 
+      });
+    }
+
+    const { amount, currency = 'usd', metadata = {} } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Amount inválido' });
+    }
+
+    // Crear PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Stripe usa centavos
+      currency: currency,
+      metadata: {
+        ...metadata,
+        integration: 'eventradar'
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    console.log('[Stripe] PaymentIntent creado:', paymentIntent.id);
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
+
+  } catch (error) {
+    console.error('[Stripe] Error:', error);
+    res.status(500).json({ 
+      error: 'Error al crear payment intent',
+      message: error.message 
+    });
+  }
+});
+
+// Mercado Pago: Create Preference
+app.post('/api/mercadopago/create-preference', async (req, res) => {
+  try {
+    if (!mercadopagoClient) {
+      return res.status(503).json({ 
+        error: 'Mercado Pago no está configurado. Por favor, configura MERCADOPAGO_ACCESS_TOKEN.' 
+      });
+    }
+
+    const { items, payer = {}, metadata = {} } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items inválidos' });
+    }
+
+    // Crear preferencia de pago con nueva API
+    const preference = new Preference(mercadopagoClient);
+    const result = await preference.create({
+      body: {
+        items: items.map(item => ({
+          title: item.title,
+          unit_price: Number(item.price),
+          quantity: Number(item.quantity) || 1,
+          currency_id: item.currency || 'CLP'
+        })),
+        payer: {
+          name: payer.name,
+          email: payer.email
+        },
+        back_urls: {
+          success: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/success`,
+          failure: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/failure`,
+          pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/pending`
+        },
+        auto_return: 'approved',
+        metadata: metadata,
+        notification_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/mercadopago/webhook`
+      }
+    });
+
+    console.log('[Mercado Pago] Preference creada:', result.id);
+
+    res.json({
+      preferenceId: result.id,
+      initPoint: result.init_point,
+      sandboxInitPoint: result.sandbox_init_point
+    });
+
+  } catch (error) {
+    console.error('[Mercado Pago] Error:', error);
+    res.status(500).json({ 
+      error: 'Error al crear preferencia de pago',
+      message: error.message 
+    });
+  }
+});
+
+// Mercado Pago: Webhook para notificaciones
+app.post('/api/mercadopago/webhook', async (req, res) => {
+  try {
+    const { type, data } = req.body;
+    
+    console.log('[Mercado Pago] Webhook recibido:', type, data);
+    
+    // Aquí procesarías la notificación (actualizar base de datos, enviar email, etc.)
+    // Por ahora solo respondemos 200 OK
+    
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('[Mercado Pago] Error en webhook:', error);
+    res.sendStatus(500);
+  }
+});
+
+// Stripe: Webhook para eventos
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      console.warn('[Stripe] Webhook secret no configurado');
+      return res.sendStatus(200);
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+      console.error('[Stripe] Webhook signature verification failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    console.log('[Stripe] Webhook recibido:', event.type);
+
+    // Manejar diferentes tipos de eventos
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        console.log('[Stripe] Payment succeeded:', paymentIntent.id);
+        // Aquí actualizarías la base de datos, enviarías email, etc.
+        break;
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        console.log('[Stripe] Payment failed:', failedPayment.id);
+        break;
+      default:
+        console.log('[Stripe] Unhandled event type:', event.type);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('[Stripe] Error en webhook:', error);
+    res.sendStatus(500);
   }
 });
 
