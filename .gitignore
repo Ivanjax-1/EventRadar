@@ -1,1 +1,21 @@
-node_modules
+# Dependencias
+node_modules/
+server/node_modules/
+
+# Build
+dist/
+build/
+
+# Env
+.env
+
+# Android / Mobile
+android/
+EventRadarMobile/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
