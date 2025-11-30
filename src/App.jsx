@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import DebugPage from './pages/DebugPage';
 import Favorites from './pages/Favorites';
 import './index.css';
 
@@ -115,7 +114,6 @@ const AppWithRouter = () => {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/debug" element={<DebugPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/favorites" element={<Favorites />} />
