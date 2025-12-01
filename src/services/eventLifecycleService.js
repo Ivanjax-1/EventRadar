@@ -105,14 +105,140 @@ export const updateAllEventStatuses = async () => {
  */
 export const cleanupArchivedEvents = async () => {
   try {
-    const { data, error } = await supabase.rpc('cleanup_archived_events');
+    console.log('🗑️ [Limpieza] Buscando eventos expirados...');
     
-    if (error) throw error;
+    // Primero intentar con RPC si existe
+    try {
+      const { data, error } = await supabase.rpc('cleanup_archived_events');
+      if (!error) {
+        console.log(`✅ [RPC] ${data} eventos archivados eliminados`);
+        return { success: true, deletedCount: data };
+      }
+    } catch (rpcError) {
+      console.log('ℹ️ RPC no disponible, usando limpieza directa');
+    }
     
-    console.log(`✅ ${data} eventos archivados eliminados`);
-    return { success: true, deletedCount: data };
+    // Fallback: eliminar directamente
+    // Obtener todos los eventos
+    const { data: allEvents, error: fetchError } = await supabase
+      .from('events')
+      .select('id, title, start_date, end_date, date');
+    
+    if (fetchError) throw fetchError;
+    
+    const now = new Date();
+    const eventsToDelete = [];
+    
+    // Identificar eventos expirados
+    allEvents.forEach(event => {
+      const startDate = event.start_date ? new Date(event.start_date) : new Date(event.date);
+      const endDate = event.end_date ? new Date(event.end_date) : new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
+      
+      // Si ya terminó (end_date < now)
+      if (endDate < now) {
+        eventsToDelete.push({ id: event.id, title: event.title, endDate });
+      }
+    });
+    
+    if (eventsToDelete.length === 0) {
+      console.log('✅ No hay eventos expirados para eliminar');
+      return { success: true, deletedCount: 0 };
+    }
+    
+    console.log(`🗑️ Encontrados ${eventsToDelete.length} eventos expirados:`, 
+      eventsToDelete.map(e => `"${e.title}" (terminó: ${e.endDate.toLocaleString()})`));
+    
+    const eventIds = eventsToDelete.map(e => e.id);
+    
+    // PASO 1: Eliminar favoritos asociados a estos eventos
+    const { data: deletedFavorites, error: favError } = await supabase
+      .from('favorites')
+      .delete()
+      .in('event_id', eventIds)
+      .select();
+    
+    if (favError) {
+      console.warn('⚠️ Error eliminando favoritos:', favError);
+    } else {
+      console.log(`✅ ${deletedFavorites?.length || 0} favoritos huérfanos eliminados`);
+    }
+    
+    // PASO 2: Eliminar eventos expirados
+    const { data: deleted, error: deleteError } = await supabase
+      .from('events')
+      .delete()
+      .in('id', eventIds)
+      .select();
+    
+    if (deleteError) throw deleteError;
+    
+    console.log(`✅ ${deleted.length} eventos expirados eliminados exitosamente`);
+    return { 
+      success: true, 
+      deletedCount: deleted.length, 
+      deletedFavoritesCount: deletedFavorites?.length || 0,
+      deleted 
+    };
+    
   } catch (error) {
     console.error('❌ Error eliminando eventos archivados:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Limpia favoritos huérfanos (favoritos que apuntan a eventos que ya no existen)
+ * Útil para limpiar favoritos de eventos eliminados manualmente
+ */
+export const cleanupOrphanedFavorites = async () => {
+  try {
+    console.log('🧹 [Limpieza] Buscando favoritos huérfanos...');
+    
+    // Obtener todos los favoritos
+    const { data: allFavorites, error: favError } = await supabase
+      .from('favorites')
+      .select('id, event_id, user_id');
+    
+    if (favError) throw favError;
+    
+    if (!allFavorites || allFavorites.length === 0) {
+      console.log('✅ No hay favoritos para verificar');
+      return { success: true, deletedCount: 0 };
+    }
+    
+    // Obtener todos los IDs de eventos existentes
+    const { data: existingEvents, error: eventsError } = await supabase
+      .from('events')
+      .select('id');
+    
+    if (eventsError) throw eventsError;
+    
+    const existingEventIds = new Set(existingEvents.map(e => e.id));
+    
+    // Encontrar favoritos huérfanos (event_id no existe)
+    const orphanedFavorites = allFavorites.filter(fav => !existingEventIds.has(fav.event_id));
+    
+    if (orphanedFavorites.length === 0) {
+      console.log('✅ No hay favoritos huérfanos');
+      return { success: true, deletedCount: 0 };
+    }
+    
+    console.log(`🗑️ Encontrados ${orphanedFavorites.length} favoritos huérfanos`);
+    
+    // Eliminar favoritos huérfanos
+    const { data: deleted, error: deleteError } = await supabase
+      .from('favorites')
+      .delete()
+      .in('id', orphanedFavorites.map(f => f.id))
+      .select();
+    
+    if (deleteError) throw deleteError;
+    
+    console.log(`✅ ${deleted.length} favoritos huérfanos eliminados`);
+    return { success: true, deletedCount: deleted.length };
+    
+  } catch (error) {
+    console.error('❌ Error limpiando favoritos huérfanos:', error);
     return { success: false, error };
   }
 };
@@ -219,23 +345,37 @@ export const getTimeUntilStart = (startDate) => {
 /**
  * Inicializa el servicio de limpieza automática
  * Ejecuta limpieza cada 1 hora
+ * @param {boolean} isAdmin - Solo ejecutar limpieza si es admin
  */
-export const initEventLifecycleService = () => {
+export const initEventLifecycleService = (isAdmin = false) => {
   console.log('🔄 Servicio de ciclo de vida de eventos iniciado');
   
-  // Ejecutar limpieza inmediatamente
-  cleanupArchivedEvents();
-  
-  // Ejecutar cada hora
-  setInterval(() => {
-    console.log('🔄 Ejecutando limpieza programada de eventos...');
-    cleanupArchivedEvents();
-    updateAllEventStatuses();
-  }, 60 * 60 * 1000); // 1 hora
-  
-  return () => {
-    console.log('🛑 Servicio de ciclo de vida de eventos detenido');
-  };
+  // Solo ejecutar limpieza si es admin
+  if (isAdmin) {
+    console.log('👑 Usuario admin detectado - ejecutando limpieza completa');
+    
+    // Ejecutar limpieza inmediatamente (eventos expirados + favoritos huérfanos)
+    const runCleanup = async () => {
+      await cleanupArchivedEvents();
+      await cleanupOrphanedFavorites();
+    };
+    
+    runCleanup();
+    
+    // Ejecutar cada hora
+    const intervalId = setInterval(() => {
+      console.log('🔄 Ejecutando limpieza programada...');
+      runCleanup();
+    }, 60 * 60 * 1000); // 1 hora
+    
+    return () => {
+      console.log('🛑 Servicio de ciclo de vida de eventos detenido');
+      clearInterval(intervalId);
+    };
+  } else {
+    console.log('ℹ️ Limpieza automática solo disponible para admins');
+    return () => {}; // No-op cleanup function
+  }
 };
 
 export default {
@@ -243,6 +383,7 @@ export default {
   getStatusLabel,
   updateAllEventStatuses,
   cleanupArchivedEvents,
+  cleanupOrphanedFavorites,
   getActiveEvents,
   getTimeUntilStart,
   initEventLifecycleService

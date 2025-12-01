@@ -3,6 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safe area para dispositivos con notch */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 
 :root {
   --background: 222.2 84% 4.9%;

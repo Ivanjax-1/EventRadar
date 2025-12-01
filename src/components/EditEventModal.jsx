@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, MapPin } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { deleteEvent } from '../services/eventService';
 
 const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'otaku',
+    category: 'Anime',
     date: '',
     time: '',
     location: '',
@@ -17,7 +18,7 @@ const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
   });
 
   const eventCategories = {
-    'otaku': { emoji: '🎌', name: 'Otaku/Anime', color: '#9333ea' },
+    'Anime': { emoji: '🎌', name: 'Anime', color: '#9333ea' },
     'musica': { emoji: '🎵', name: 'Música', color: '#ec4899' },
     'gastronomia': { emoji: '🍕', name: 'Gastronomía', color: '#f59e0b' },
     'deportes': { emoji: '⚽', name: 'Deportes', color: '#10b981' },
@@ -32,7 +33,7 @@ const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
       setFormData({
         title: event.title || '',
         description: event.description || '',
-        category: event.category || 'otaku',
+        category: event.category || 'Anime',
         date: event.date || '',
         time: event.time || '',
         location: event.location || '',
@@ -105,12 +106,30 @@ const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
     }
   };
 
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  // Eliminar evento
+  const handleDelete = async () => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.')) return;
+    setLoading(true);
+    try {
+      await deleteEvent(event.id);
+      alert('✅ Evento eliminado correctamente');
+      if (onEventUpdated) onEventUpdated(null); // Notifica que fue eliminado
+      onClose();
+    } catch (error) {
+      console.error('❌ Error eliminando evento:', error);
+      alert('Error al eliminar el evento');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen || !event) return null;
@@ -324,6 +343,14 @@ const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
                   Guardar Cambios
                 </>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              Eliminar Evento
             </button>
           </div>
         </form>

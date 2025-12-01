@@ -29,6 +29,7 @@ const CreateEventPage = () => {
   const [errors, setErrors] = useState({});
 
   const categories = [
+    { value: 'anime', label: 'Anime' },
     { value: 'music', label: 'Música' },
     { value: 'sports', label: 'Deportes' },
     { value: 'technology', label: 'Tecnología' },

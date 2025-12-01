@@ -1,25 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, User, Menu, X, LogOut, Home, Heart, Search, Filter, SortAsc } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MapPin, Calendar, User, Menu, X, LogOut, Home, Heart, Search, Filter, SortAsc, Plus, Sparkles, DollarSign, Bot } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useUserRole } from '../hooks/useUserRole';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { supabase } from '../lib/supabase';
 import MapView from '../components/MapView';
+import MobileMapView from '../components/MobileMapView';
+import ProfilePage from './ProfilePage';
 import AdminEventForm from '../components/AdminEventForm';
 import EventRadarLogo from '../components/EventRadarLogo';
+import RecommendedEvents from '../components/RecommendedEvents';
+import AIAssistant from '../components/AIAssistant';
+import EventStatusBadge from '../components/ui/EventStatusBadge';
+import SmartNotificationManager from '../components/SmartNotificationManager';
+import SmartNotificationToast from '../components/SmartNotificationToast';
+import trackingService from '../services/trackingService';
+import { getActiveEvents, calculateEventStatus, initEventLifecycleService } from '../services/eventLifecycleService';
+import PricingPage from './PricingPage';
+import { CombinedEventBadges } from '../components/EventPromotionBadge';
+import geofencingService from '../services/geofencingService';
+import retargetingService from '../services/retargetingService';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile, signOut } = useAuth();
+  const { role } = useUserRole();
+  const isMobile = useIsMobile(); // Detectar si es móvil
+  const isAdmin = role === 'admin';
+  const isPremium = role === 'premium';
   const [activeTab, setActiveTab] = useState('mapa');
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
+  const [showAIChat, setShowAIChat] = useState(false);
+
+  // Detectar si vienen desde una notificación
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Limpiar el state para que no se quede pegado
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location]);
+
   // Estado simplificado
   const [events, setEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]); // Todos los eventos sin filtrar
   const [favoriteIds, setFavoriteIds] = useState(new Set()); // Solo IDs de favoritos
   const [loading, setLoading] = useState(true);
-  
+
   // Estados para filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('priority'); // priority, date, category, region
@@ -27,91 +57,255 @@ const DashboardPage = () => {
   const [filterRegion, setFilterRegion] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    if (!user) return;
-    loadAllData();
-  }, [user, refreshTrigger]);
-
   const loadAllData = async () => {
-    setLoading(true);
-    await Promise.all([
-      loadEvents(),
-      loadFavoriteIds()
-    ]);
-    setLoading(false);
-  };
-
-  const loadEvents = async () => {
     try {
       console.log('📡 Cargando eventos...');
+      setLoading(true);
+
       const { data, error } = await supabase
         .from('events')
         .select(`
           *,
           event_categories(id, name, color, icon)
         `)
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: true });
 
       if (error) {
         console.error('❌ Error cargando eventos:', error);
         return;
       }
 
-      console.log('✅ Eventos cargados:', data?.length || 0);
-      
-      // Ordenar eventos por fecha de finalización (los que terminan primero)
-      const sortedEvents = (data || []).map(event => {
-        // Si no tiene end_date, asumimos duración de 3 horas por defecto
-        const startDate = new Date(event.date);
-        const endDate = event.end_date ? new Date(event.end_date) : new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
-        
+      const uniqueData = data
+        ? Array.from(new Map(data.map(event => [event.id, event])).values())
+        : [];
+
+      if (!uniqueData.length) {
+        setAllEvents([]);
+        setEvents([]);
+        return;
+      }
+
+      const processedEvents = uniqueData.map(event => {
+        const startDate = event.start_date
+          ? new Date(event.start_date)
+          : new Date(event.date);
+
+        const endDate = event.end_date
+          ? new Date(event.end_date)
+          : new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
+
         return {
           ...event,
+          start_date: startDate,
           calculated_end_date: endDate,
-          start_date: startDate
+          clientStatus: calculateEventStatus(startDate),
         };
-      }).sort((a, b) => {
-        // Ordenar por fecha de finalización ascendente (los que terminan primero)
-        return a.calculated_end_date.getTime() - b.calculated_end_date.getTime();
       });
 
-      console.log('✅ Eventos ordenados por fecha de finalización:', sortedEvents.length);
-      setAllEvents(sortedEvents); // Guardar todos los eventos
-      setEvents(sortedEvents); // Eventos filtrados (inicialmente todos)
+      const activeEvents = processedEvents.filter(
+        event => event.clientStatus !== 'archived'
+      );
+
+      setAllEvents(activeEvents);
+      setEvents(activeEvents);
+      
+      console.log('✅ Eventos cargados:', activeEvents.length);
+      if (activeEvents.length > 0) {
+        console.log('📋 Primeros 3 eventos con IDs:', activeEvents.slice(0, 3).map(e => ({
+          id: e.id,
+          idType: typeof e.id,
+          title: e.title
+        })));
+      }
+
     } catch (error) {
-      console.error('❌ Error en loadEvents:', error);
+      console.error('❌ Error en loadAllData:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Estado para notificaciones smart
+  const [smartNotifications, setSmartNotifications] = useState([]);
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    if (!user) return;
+    loadAllData();
+    loadFavoriteIds(); // ⭐ CARGAR FAVORITOS
+
+    // Inicializar servicio de limpieza automática de eventos (solo admin)
+    const cleanup = initEventLifecycleService(isAdmin);
+
+    // Inicializar servicios de geofencing y retargeting
+    initSmartServices();
+
+    return () => {
+      if (cleanup) cleanup();
+      // Detener geofencing al desmontar
+      geofencingService.stopWatching();
+      window.removeEventListener('eventNearby', handleEventNearby);
+      window.removeEventListener('retargetingNotification', handleRetargetingNotification);
+    };
+  }, [user, refreshTrigger]);
+
+  // Inicializar servicios inteligentes
+  const initSmartServices = async () => {
+    // Solicitar permisos de notificaciones
+    const notificationPermission = await retargetingService.requestNotificationPermission();
+    console.log('🔔 Permisos de notificación:', notificationPermission ? 'Concedido' : 'Denegado');
+
+    // Iniciar geofencing (radio de 500m)
+    const geofencingStarted = await geofencingService.startWatching(allEvents, 500);
+    if (geofencingStarted) {
+      console.log('🛰️ Geofencing activado - Radio: 500m');
+    }
+
+    // Escuchar eventos cercanos
+    window.addEventListener('eventNearby', handleEventNearby);
+    window.addEventListener('retargetingNotification', handleRetargetingNotification);
+  };
+
+  // Handler para eventos cercanos
+  const handleEventNearby = (event) => {
+    const { event: nearbyEvent, distance } = event.detail;
+
+    console.log(`📍 Evento cercano detectado: ${nearbyEvent.title} (${distance}m)`);
+
+    const notification = {
+      id: `nearby-${nearbyEvent.id}-${Date.now()}`,
+      type: 'proximity',
+      title: 'Evento cercano',
+      message: `Estás cerca de ${nearbyEvent.title}`,
+      eventId: nearbyEvent.id,
+    };
+
+    setSmartNotifications(prev => [...prev, notification]);
+  };
+
+  const handleRetargetingNotification = (event) => {
+    const detail = event.detail || {};
+    console.log('🎯 Notificación de retargeting recibida:', detail);
+
+    const notification = {
+      id: detail.id || `retargeting-${detail.eventId || Date.now()}`,
+      type: detail.type || 'retargeting',
+      title: detail.title || 'Recordatorio de evento',
+      message: detail.body || detail.message || 'Revisa este evento nuevamente',
+      eventId: detail.eventId,
+      timestamp: detail.timestamp || new Date(),
+    };
+
+    setSmartNotifications(prev => [...prev, notification]);
+  };
+
+
+
+
+
   const loadFavoriteIds = async () => {
     try {
-      console.log('💖 Cargando IDs de favoritos...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('💖 Cargando favoritos...');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('👤 Usuario:', user ? { id: user.id, email: user.email } : 'NO AUTENTICADO');
+
+      if (!user) {
+        console.warn('⚠️ No hay usuario autenticado, no se cargarán favoritos');
+        return;
+      }
+
+      // Cargar favoritos
       const { data, error } = await supabase
         .from('favorites')
         .select('event_id')
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('❌ Error cargando favoritos:', error);
+        console.error('❌ Error cargando favoritos:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         return;
       }
 
-      const ids = new Set(data?.map(fav => fav.event_id) || []);
-      console.log('✅ IDs de favoritos cargados:', Array.from(ids));
+      if (!data || data.length === 0) {
+        console.log('ℹ️ No tienes favoritos guardados');
+        setFavoriteIds(new Set());
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return;
+      }
+
+      console.log(`📊 Total favoritos en BD: ${data.length}`);
+
+      // Verificar qué favoritos corresponden a eventos que existen
+      const favoriteEventIds = data.map(fav => fav.event_id);
+      
+      const { data: existingEvents, error: eventsError } = await supabase
+        .from('events')
+        .select('id')
+        .in('id', favoriteEventIds);
+
+      if (eventsError) {
+        console.error('❌ Error verificando eventos:', eventsError);
+        // Continuar sin verificar
+        const ids = new Set(favoriteEventIds);
+        setFavoriteIds(ids);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        return;
+      }
+
+      const existingEventIds = new Set(existingEvents.map(e => e.id));
+      const validFavorites = favoriteEventIds.filter(id => existingEventIds.has(id));
+      const orphanedFavorites = favoriteEventIds.filter(id => !existingEventIds.has(id));
+
+      // Si hay favoritos huérfanos, eliminarlos
+      if (orphanedFavorites.length > 0) {
+        console.warn(`🗑️ Encontrados ${orphanedFavorites.length} favoritos huérfanos (eventos eliminados)`);
+        console.warn('   IDs huérfanos:', orphanedFavorites);
+        
+        const { error: deleteError } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .in('event_id', orphanedFavorites);
+
+        if (deleteError) {
+          console.error('❌ Error eliminando favoritos huérfanos:', deleteError);
+        } else {
+          console.log(`✅ ${orphanedFavorites.length} favoritos huérfanos eliminados`);
+        }
+      }
+
+      // Establecer solo favoritos válidos
+      const ids = new Set(validFavorites);
+      console.log('✅ Favoritos válidos cargados:');
+      console.log('   Total válidos:', ids.size);
+      console.log('   IDs:', Array.from(ids));
       setFavoriteIds(ids);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } catch (error) {
-      console.error('❌ Error en loadFavoriteIds:', error);
+      console.error('❌ Excepción en loadFavoriteIds:', error);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   };
 
-  // Aplicar filtros y búsqueda
+  // Track favoriteIds changes for debugging
+  useEffect(() => {
+    console.log('📊 [STATE CHANGE] FavoriteIds actualizado:', {
+      count: favoriteIds.size,
+      ids: Array.from(favoriteIds),
+      timestamp: new Date().toISOString()
+    });
+  }, [favoriteIds]);
+
   useEffect(() => {
     if (!allEvents.length) return;
 
     let filteredEvents = [...allEvents];
 
-    // Aplicar búsqueda por texto
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       filteredEvents = filteredEvents.filter(event =>
@@ -122,14 +316,12 @@ const DashboardPage = () => {
       );
     }
 
-    // Aplicar filtro por categoría
     if (filterCategory !== 'all') {
       filteredEvents = filteredEvents.filter(event =>
         event.event_categories?.name?.toLowerCase() === filterCategory.toLowerCase()
       );
     }
 
-    // Aplicar filtro por región
     if (filterRegion !== 'all') {
       filteredEvents = filteredEvents.filter(event => {
         const location = event.location?.toLowerCase() || '';
@@ -137,13 +329,12 @@ const DashboardPage = () => {
       });
     }
 
-    // Aplicar ordenamiento
     switch (sortBy) {
       case 'date':
         filteredEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
         break;
       case 'category':
-        filteredEvents.sort((a, b) => 
+        filteredEvents.sort((a, b) =>
           (a.event_categories?.name || '').localeCompare(b.event_categories?.name || '')
         );
         break;
@@ -152,14 +343,12 @@ const DashboardPage = () => {
         break;
       case 'priority':
       default:
-        // Ya están ordenados por prioridad
         break;
     }
 
     setEvents(filteredEvents);
   }, [allEvents, searchTerm, sortBy, filterCategory, filterRegion]);
 
-  // Obtener categorías únicas
   const getUniqueCategories = () => {
     const categories = allEvents
       .map(event => event.event_categories?.name)
@@ -168,12 +357,10 @@ const DashboardPage = () => {
     return categories;
   };
 
-  // Obtener regiones únicas
   const getUniqueRegions = () => {
     const regions = allEvents
       .map(event => {
         const location = event.location || '';
-        // Extraer ciudad/región principal
         if (location.toLowerCase().includes('santiago')) return 'Santiago';
         if (location.toLowerCase().includes('valparaíso') || location.toLowerCase().includes('valparaiso')) return 'Valparaíso';
         if (location.toLowerCase().includes('concepción') || location.toLowerCase().includes('concepcion')) return 'Concepción';
@@ -183,71 +370,168 @@ const DashboardPage = () => {
       .filter((value, index, self) => self.indexOf(value) === index);
     return regions;
   };
-
-  // Función simple para toggle de favoritos
   const toggleFavorite = async (eventId) => {
-    const isFavorite = favoriteIds.has(eventId);
-    console.log('🔄 Toggle favorito:', eventId, isFavorite ? 'REMOVE' : 'ADD');
+    const startTime = new Date().toISOString();
+    const operationId = `${eventId}_${Date.now()}`;
+    
+    // 🔍 DIAGNÓSTICO DETALLADO
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🔄 Toggle Favorite (DashboardPage) - INICIO [${operationId}]`);
+    console.log('⏰ Timestamp:', startTime);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-    // Actualizar UI inmediatamente
-    const newFavoriteIds = new Set(favoriteIds);
-    if (isFavorite) {
-      newFavoriteIds.delete(eventId);
-    } else {
-      newFavoriteIds.add(eventId);
+    const isFavorite = favoriteIds.has(eventId);
+
+    console.log('Estado actual:', {
+      eventId,
+      operationId,
+      isFavorite,
+      user: user ? { id: user.id, email: user.email } : null,
+      favoriteIds: Array.from(favoriteIds),
+      favoriteCount: favoriteIds.size,
+      action: isFavorite ? 'ELIMINAR' : 'AGREGAR'
+    });
+
+    if (!user) {
+      console.error('❌ ERROR: Usuario no autenticado');
+      alert('Debes iniciar sesión para marcar favoritos');
+      return;
     }
-    setFavoriteIds(newFavoriteIds);
+
+    // Track favorito (IA)
+    if (user) {
+      trackingService.trackFavorite(user.id, eventId, !isFavorite);
+    }
 
     try {
       if (isFavorite) {
-        // Remover
-        const { error } = await supabase
+        // Quitar de favoritos
+        console.log('🗑️ Eliminando de BD...', { user_id: user.id, event_id: eventId });
+
+        const { data, error } = await supabase
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
-          .eq('event_id', eventId);
-        
+          .eq('event_id', eventId)
+          .select();
+
         if (error) {
-          console.error('❌ Error removiendo favorito:', error);
-          // Revertir cambio
-          setFavoriteIds(favoriteIds);
-        } else {
-          console.log('✅ Favorito removido de BD');
+          console.error('❌ ERROR al eliminar:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          alert('Error al quitar de favoritos: ' + error.message);
+          return;
         }
+        
+        console.log('✅ ÉXITO - Favorito removido de BD', data);
+        // Actualizar estado local después del éxito
+        const newFavoriteIds = new Set(favoriteIds);
+        newFavoriteIds.delete(eventId);
+        setFavoriteIds(newFavoriteIds);
+        console.log('✅ Estado local actualizado:', Array.from(newFavoriteIds));
+        
       } else {
-        // Agregar
-        const { error } = await supabase
+        // Agregar a favoritos - Verificar primero si existe
+        console.log('💾 Insertando en BD...', { user_id: user.id, event_id: eventId });
+
+        // Primero verificar si ya existe
+        const { data: existing } = await supabase
           .from('favorites')
-          .insert([{ user_id: user.id, event_id: eventId }]);
-        
-        if (error) {
-          console.error('❌ Error agregando favorito:', error);
-          // Revertir cambio
-          setFavoriteIds(favoriteIds);
-        } else {
-          console.log('✅ Favorito agregado a BD');
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('event_id', eventId)
+          .maybeSingle();
+
+        if (existing) {
+          console.log('ℹ️ Favorito ya existe en BD');
+          // Ya existe, asegurar que esté en el estado local
+          const newFavoriteIds = new Set(favoriteIds);
+          newFavoriteIds.add(eventId);
+          setFavoriteIds(newFavoriteIds);
+          return;
         }
+
+        // Si no existe, insertar
+        const { data, error } = await supabase
+          .from('favorites')
+          .insert({ user_id: user.id, event_id: eventId })
+          .select();
+
+        if (error) {
+          console.error('❌ ERROR al agregar:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          alert('Error al agregar a favoritos: ' + error.message);
+          return;
+        }
+        
+        console.log('✅ ÉXITO - Favorito agregado a BD', data);
+        // Actualizar estado local después del éxito
+        const newFavoriteIds = new Set(favoriteIds);
+        newFavoriteIds.add(eventId);
+        setFavoriteIds(newFavoriteIds);
+        console.log('✅ Estado local actualizado:', Array.from(newFavoriteIds));
       }
     } catch (error) {
-      console.error('❌ Error en toggleFavorite:', error);
-      // Revertir cambio
-      setFavoriteIds(favoriteIds);
+      console.error('❌ EXCEPCIÓN en toggleFavorite:', error);
+      alert('Error inesperado: ' + error.message);
     }
+
+    const endTime = new Date().toISOString();
+    const duration = Date.now() - parseInt(operationId.split('_')[1]);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🏁 Toggle Favorite - FIN [${operationId}]`);
+    console.log(`⏱️ Duración: ${duration}ms`);
+    console.log('⏰ Timestamp final:', endTime);
+    console.log('📊 FavoriteIds finales:', Array.from(favoriteIds));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
-  // Obtener eventos favoritos
   const getFavoriteEvents = () => {
-    return events.filter(event => favoriteIds.has(event.id));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔍 [getFavoriteEvents] Buscando favoritos...');
+    console.log('📊 Estado actual:');
+    console.log('   - allEvents.length:', allEvents.length);
+    console.log('   - favoriteIds.size:', favoriteIds.size);
+    console.log('   - favoriteIds:', Array.from(favoriteIds));
+    
+    // Buscar primero en allEvents (eventos activos)
+    const favoriteEvents = allEvents.filter(event => {
+      const isFavorite = favoriteIds.has(event.id);
+      if (isFavorite) {
+        console.log(`   ✅ Evento FAVORITO encontrado: ID=${event.id}, Nombre="${event.title}"`);
+      }
+      return isFavorite;
+    });
+    
+    console.log('📋 Resultado:');
+    console.log('   - Favoritos encontrados:', favoriteEvents.length);
+    console.log('   - Event IDs encontrados:', favoriteEvents.map(e => `${e.id} (${e.title})`));
+    
+    // Verificar si hay favoriteIds que NO se encontraron (eventos archivados o eliminados)
+    const foundIds = new Set(favoriteEvents.map(e => e.id));
+    const missingIds = Array.from(favoriteIds).filter(id => !foundIds.has(id));
+    if (missingIds.length > 0) {
+      console.warn('⚠️ Favoritos archivados/eliminados (no mostrados):', missingIds);
+      console.warn('   Estos eventos ya no están activos pero siguen en favoritos.');
+    }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    return favoriteEvents;
   };
 
-  // Calcular tiempo restante y estado del evento
   const getEventTimeInfo = (event) => {
     const now = new Date();
     const startDate = event.start_date || new Date(event.date);
     const endDate = event.calculated_end_date;
-    
+
     if (now < startDate) {
-      // Evento futuro
       const timeToStart = startDate.getTime() - now.getTime();
       return {
         status: 'upcoming',
@@ -307,7 +591,7 @@ const DashboardPage = () => {
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span 
+          <span
             className={`text-xs px-2 py-1 rounded-full font-medium ${timeInfo.statusColor}`}
           >
             {timeInfo.statusText}
@@ -316,20 +600,22 @@ const DashboardPage = () => {
             <span className="text-xs animate-pulse">⚠️ ¡Termina pronto!</span>
           )}
         </div>
-        <div className={`text-sm font-medium ${
-          timeInfo.urgency === 'urgent' ? 'text-red-600 animate-pulse' : 
+        <div className={`text-sm font-medium ${timeInfo.urgency === 'urgent' ? 'text-red-600 animate-pulse' :
           timeInfo.urgency === 'ended' ? 'text-gray-500' : 'text-purple-600'
-        }`}>
+          }`}>
           ⏰ {timeInfo.timeInfo}
         </div>
       </div>
     );
   };
 
-  // Tabs
+  // Tabs - Ahora usan el hook useUserRole
   const tabs = [
     { id: 'mapa', label: 'Mapa', icon: MapPin },
+    { id: 'recomendados', label: 'Para Ti', icon: Sparkles, special: true },
     { id: 'eventos', label: 'Eventos', icon: Calendar },
+    { id: 'pricing', label: 'Suscripción de Eventos', icon: DollarSign, special: true },
+    ...((isAdmin || isPremium) ? [{ id: 'crear', label: isAdmin ? 'Crear' : 'Inscribe tu Evento', icon: Plus, special: true }] : []),
     { id: 'favoritos', label: 'Favoritos', icon: Heart },
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
@@ -352,19 +638,18 @@ const DashboardPage = () => {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          console.log(`[EventCard] Click en favorito - Event ID: ${eventId}, isFavorite: ${isFavorite}`);
           toggleFavorite(eventId);
         }}
-        className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${
-          isFavorite 
-            ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-            : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-red-400'
-        } shadow-sm hover:shadow-md`}
+        className={`p-2 rounded-full transition-all duration-200 transform hover:scale-110 ${isFavorite
+          ? 'bg-red-100 text-red-600 hover:bg-red-200'
+          : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-red-400'
+          } shadow-sm hover:shadow-md`}
         title={isFavorite ? 'Quitar de favoritos ❤️' : 'Agregar a favoritos 🤍'}
       >
-        <Heart 
-          className={`w-5 h-5 transition-all duration-200 ${
-            isFavorite ? 'fill-current text-red-600' : 'text-gray-400'
-          }`} 
+        <Heart
+          className={`w-5 h-5 transition-all duration-200 ${isFavorite ? 'fill-current text-red-600' : 'text-gray-400'
+            }`}
         />
       </button>
     );
@@ -372,26 +657,53 @@ const DashboardPage = () => {
 
   // Renderizar lista de eventos
   const renderEventCard = (event, showFavoriteButton = true) => (
-    <div key={event.id} className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50 hover:shadow-xl transition-all">
+    <div
+      key={event.id}
+      className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-white/50 hover:shadow-xl transition-all cursor-pointer"
+      onClick={() => {
+        // Track click en evento
+        if (user) {
+          trackingService.trackEventClick(user.id, event.id);
+          // Activar retargeting
+          retargetingService.trackEventView(user.id, event.id, event);
+        }
+      }}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-start gap-2 mb-2">
+          <div className="flex items-start gap-2 mb-2 flex-wrap">
+            {/* Badges de promoción */}
+            <CombinedEventBadges
+              promotionTier={event.promotion_tier}
+              favoritesCount={event.analytics_favorites || 0}
+              isLive={event.live_status === 'live'}
+              createdAt={event.created_at}
+              isNew={event.isNew}
+              isAlmostFull={event.isAlmostFull}
+              capacity={event.capacity}
+              attendeesCount={event.attendees_count || 0}
+              maxBadges={3}
+            />
+
             {event.event_categories && (
-              <span 
+              <span
                 className="text-xs px-2 py-1 rounded-full text-white font-medium"
                 style={{ backgroundColor: event.event_categories.color }}
               >
                 {event.event_categories.icon} {event.event_categories.name}
               </span>
             )}
+
+            {/* Badge de estado del evento (En vivo, Finalizado) */}
+            <EventStatusBadge event={event} />
           </div>
           <h3 className="font-bold text-lg text-gray-800 mb-2">
             {event.title}
           </h3>
-          
+
           {/* Temporizador del evento */}
           <EventTimer event={event} />
-          
+
           <p className="text-purple-600 font-medium text-sm mb-1 mt-2">
             📅 {new Date(event.date).toLocaleDateString('es-ES', {
               year: 'numeric',
@@ -433,32 +745,62 @@ const DashboardPage = () => {
 
     switch (activeTab) {
       case 'mapa':
-        return (
-          <div className="h-full bg-gradient-to-br from-purple-100/20 to-pink-100/20 p-4 relative">
-            <div className="h-full rounded-xl overflow-hidden shadow-lg">
-              <MapView 
+        return isMobile ? (
+          // Versión móvil: mapa expandido hasta el borde inferior
+          <div className="absolute inset-0">
+            <MobileMapView
+              key={refreshTrigger}
+              favoriteIds={favoriteIds}
+              onFavoriteToggle={toggleFavorite}
+            />
+          </div>
+        ) : (
+          // Versión desktop: con centrado y estilo
+          <div className="h-full w-full flex items-center justify-center relative">
+            <div className="h-[90vh] w-[95vw] rounded-3xl overflow-hidden shadow-2xl border-2 border-purple-500">
+              <MapView
                 key={refreshTrigger}
                 favoriteIds={favoriteIds}
                 onFavoriteToggle={toggleFavorite}
               />
             </div>
-            <AdminEventForm onEventCreated={handleEventCreated} />
+          </div>
+        );
+
+      case 'recomendados':
+      case 'parati':
+        return (
+          <div className="h-full overflow-y-auto">
+            <div className="p-6 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900 min-h-full">
+              <div className="max-w-6xl mx-auto">
+                <RecommendedEvents
+                  allEvents={allEvents}
+                  onEventClick={(eventId) => {
+                    if (user) {
+                      trackingService.trackEventClick(user.id, eventId);
+                    }
+                  }}
+                  renderEventCard={(event, showFavoriteButton) => renderEventCard(event, showFavoriteButton)}
+                  limit={12}
+                />
+              </div>
+            </div>
           </div>
         );
 
       case 'eventos':
         return (
           <div className="h-full overflow-y-auto">
-            <div className="p-6 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
+            <div className="p-6 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900">
               <div className="max-w-4xl mx-auto">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                  <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                  <h2 className="text-3xl font-bold text-white flex items-center gap-3">
                     🎉 Eventos ({events.length}/{allEvents.length})
                   </h2>
-                  
+
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
                   >
                     <Filter className="w-4 h-4" />
                     {showFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
@@ -491,7 +833,7 @@ const DashboardPage = () => {
                 {showFilters && (
                   <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 mb-6 border border-white/50 shadow-lg">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      
+
                       {/* Ordenar por */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -554,7 +896,7 @@ const DashboardPage = () => {
                           setFilterCategory('all');
                           setFilterRegion('all');
                         }}
-                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                       >
                         🗑️ Limpiar todos los filtros
                       </button>
@@ -564,9 +906,9 @@ const DashboardPage = () => {
 
                 {/* Información de filtros activos */}
                 {(searchTerm || filterCategory !== 'all' || filterRegion !== 'all' || sortBy !== 'priority') && (
-                  <div className="mb-4 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
-                    <p className="text-sm text-purple-700">
-                      🔍 Filtros activos: 
+                  <div className="mb-4 p-3 bg-white/10 rounded-lg border-l-4 border-yellow-400 backdrop-blur-sm">
+                    <p className="text-sm text-white">
+                      🔍 Filtros activos:
                       {searchTerm && ` Búsqueda: "${searchTerm}"`}
                       {filterCategory !== 'all' && ` • Categoría: ${filterCategory}`}
                       {filterRegion !== 'all' && ` • Región: ${filterRegion}`}
@@ -574,32 +916,32 @@ const DashboardPage = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {events.length === 0 ? (
                   <div className="text-center py-12">
                     {allEvents.length === 0 ? (
                       <>
-                        <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        <Calendar className="w-16 h-16 text-white/40 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-white mb-2">
                           No hay eventos disponibles
                         </h3>
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-white/70 mb-6">
                           Crea tu primer evento o explora eventos existentes
                         </p>
                         <button
                           onClick={() => setActiveTab('mapa')}
-                          className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                          className="bg-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
                         >
                           Explorar en Mapa
                         </button>
                       </>
                     ) : (
                       <>
-                        <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        <Search className="w-16 h-16 text-white/40 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-white mb-2">
                           No se encontraron eventos
                         </h3>
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-white/70 mb-6">
                           Intenta cambiar los filtros o términos de búsqueda
                         </p>
                         <button
@@ -609,7 +951,7 @@ const DashboardPage = () => {
                             setFilterCategory('all');
                             setFilterRegion('all');
                           }}
-                          className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                          className="bg-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
                         >
                           🗑️ Limpiar Filtros
                         </button>
@@ -630,28 +972,28 @@ const DashboardPage = () => {
         const favoriteEvents = getFavoriteEvents();
         return (
           <div className="h-full overflow-y-auto">
-            <div className="p-6 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
+            <div className="p-6 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900">
               <div className="max-w-4xl mx-auto">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
                   ❤️ Mis Favoritos ({favoriteEvents.length})
                 </h2>
-                
-                <p className="text-sm text-gray-600 mb-4">
+
+                <p className="text-sm text-white/70 mb-4">
                   📊 Favoritos activos: {favoriteIds.size} | Eventos encontrados: {favoriteEvents.length}
                 </p>
-                
+
                 {favoriteEvents.length === 0 ? (
                   <div className="text-center py-12">
-                    <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    <Heart className="w-16 h-16 text-white/40 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-white mb-2">
                       No tienes favoritos aún
                     </h3>
-                    <p className="text-gray-600 mb-6">
+                    <p className="text-white/70 mb-6">
                       Marca eventos como favoritos para verlos aquí
                     </p>
                     <button
                       onClick={() => setActiveTab('eventos')}
-                      className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                      className="bg-white/20 text-white px-6 py-3 rounded-lg hover:bg-white/30 transition-colors backdrop-blur-sm"
                     >
                       Ver Todos los Eventos
                     </button>
@@ -666,90 +1008,32 @@ const DashboardPage = () => {
           </div>
         );
 
+      case 'pricing':
+      case 'suscripcion':
+        return (
+          <div className="h-full overflow-y-auto">
+            <PricingPage />
+          </div>
+        );
+
+      case 'crear':
+        return (
+          <div className="h-full overflow-y-auto">
+            <div className="p-6 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900">
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                  ✨ Crear Evento
+                </h2>
+                <AdminEventForm onEventCreated={handleEventCreated} alwaysOpen={true} />
+              </div>
+            </div>
+          </div>
+        );
+
       case 'perfil':
         return (
           <div className="h-full overflow-y-auto">
-            <div className="p-6 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
-              <div className="max-w-2xl mx-auto">
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                  👤 Mi Perfil
-                </h2>
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-8 shadow-lg border border-white/50">
-                  <div className="flex items-center mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-2xl font-bold text-white">
-                        {(profile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="ml-6">
-                      <h3 className="font-bold text-xl text-gray-800">
-                        {profile?.full_name || 'Usuario'}
-                      </h3>
-                      <p className="text-gray-600">{user?.email}</p>
-                      <p className="text-sm text-purple-600 mt-1">
-                        Miembro desde {new Date().getFullYear()}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 mb-6">
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-800 mb-2">📊 Estadísticas</h4>
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <div className="text-2xl font-bold text-purple-600">
-                            {favoriteIds.size}
-                          </div>
-                          <div className="text-sm text-gray-600">Eventos Favoritos</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-pink-600">
-                            {events?.filter(e => e.user_id === user?.id).length || 0}
-                          </div>
-                          <div className="text-sm text-gray-600">Eventos Creados</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-blue-600">
-                            {events?.length || 0}
-                          </div>
-                          <div className="text-sm text-gray-600">Total Eventos</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={() => {
-                        console.log('🔍 Estado actual:', {
-                          favoriteIds: Array.from(favoriteIds),
-                          events: events.length,
-                          favoriteEvents: getFavoriteEvents().length
-                        });
-                        alert('Revisa la consola para ver el estado actual');
-                      }}
-                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-                    >
-                      🧪 Debug Estado
-                    </button>
-                    <button
-                      onClick={() => navigate('/')}
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-                    >
-                      <Home className="h-5 w-5" />
-                      Ir al Home
-                    </button>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      <LogOut className="h-5 w-5" />
-                      Cerrar Sesión
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ProfilePage />
           </div>
         );
 
@@ -757,7 +1041,7 @@ const DashboardPage = () => {
         return (
           <div className="h-full bg-gradient-to-br from-purple-100/20 to-pink-100/20 p-4">
             <div className="h-full rounded-xl overflow-hidden shadow-lg">
-              <MapView />
+              {isMobile ? <MobileMapView /> : <MapView />}
             </div>
           </div>
         );
@@ -765,17 +1049,33 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-purple-600 via-pink-500 to-blue-600">
-      {/* Header */}
-      <header className="bg-white/10 backdrop-blur-md border-b border-white/20 px-4 py-3">
+    <div className={`h-screen flex flex-col ${
+      isMobile && activeTab === 'mapa' 
+        ? 'bg-black' 
+        : 'bg-gradient-to-br from-purple-600 via-pink-500 to-blue-600'
+    }`}>
+      {/* Header (hidden on small screens when 'mapa' tab is active) */}
+      <header className={`${activeTab === 'mapa' ? 'hidden md:block' : ''} bg-white/10 backdrop-blur-md border-b border-white/20 px-4 py-3`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <EventRadarLogo size={48} showText={true} variant="white" />
-            <span className="hidden md:block text-white/70 text-sm">Dashboard Simplificado</span>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-3 bg-white/10 rounded-full px-4 py-2">
+            {/* Botón del Asistente de Eventos */}
+            <button
+              onClick={() => setShowAIChat(true)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-full transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+              title="Asistente de Eventos con IA"
+            >
+              <Bot className="h-5 w-5" />
+              <span className="text-sm font-medium">¡Te Ayudamos!</span>
+            </button>
+
+            <div
+              className="hidden md:flex items-center gap-3 bg-white/10 rounded-full px-4 py-2 cursor-pointer hover:bg-white/20 transition-colors"
+              onClick={() => setActiveTab('perfil')}
+            >
               <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-sm">
                   {(profile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
@@ -783,12 +1083,12 @@ const DashboardPage = () => {
               </div>
               <div className="text-white">
                 <div className="text-sm font-medium">
-                  {profile?.full_name?.split(' ')[0] || 'Usuario'}
+                  {profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Usuario'}
                 </div>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="p-2 hover:bg-white/10 rounded-lg md:hidden text-white"
             >
@@ -806,21 +1106,25 @@ const DashboardPage = () => {
             <div className="space-y-2">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
+
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-white/20 text-white border border-white/30 shadow-lg'
-                        : 'hover:bg-white/10 text-white/80 hover:text-white'
-                    }`}
+                    onClick={() => {
+                      // Restaurar comportamiento: activar pestaña en dashboard
+                      setActiveTab(tab.id);
+                    }}
+                    className={`w-full flex items-center ${tab.iconOnly ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-xl text-left transition-all ${activeTab === tab.id
+                      ? 'bg-white/20 text-white border border-white/30 shadow-lg'
+                      : 'hover:bg-white/10 text-white/80 hover:text-white'
+                      }`}
+                    title={tab.iconOnly ? tab.label : undefined}
                   >
-                    <Icon className="h-5 w-5" />
-                    {tab.label}
-                    {tab.id === 'favoritos' && (
+                    <Icon className={`h-5 w-5 ${tab.iconOnly ? 'text-yellow-300' : ''}`} />
+                    {!tab.iconOnly && tab.label}
+                    {tab.id === 'favoritos' && !tab.iconOnly && (
                       <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                        {favoriteIds.size}
+                        {getFavoriteEvents().length}
                       </span>
                     )}
                   </button>
@@ -837,6 +1141,24 @@ const DashboardPage = () => {
               <div className="space-y-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
+
+                  // Si es el tab de perfil, redirigir a ProfilePage
+                  if (tab.id === 'perfil') {
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          navigate('/profile');
+                          setMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:bg-white/10 text-white/80"
+                      >
+                        <Icon className="h-5 w-5" />
+                        {tab.label}
+                      </button>
+                    );
+                  }
+
                   return (
                     <button
                       key={tab.id}
@@ -844,17 +1166,16 @@ const DashboardPage = () => {
                         setActiveTab(tab.id);
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
-                        activeTab === tab.id
-                          ? 'bg-white/20 text-white border border-white/30'
-                          : 'hover:bg-white/10 text-white/80'
-                      }`}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${activeTab === tab.id
+                        ? 'bg-white/20 text-white border border-white/30'
+                        : 'hover:bg-white/10 text-white/80'
+                        }`}
                     >
                       <Icon className="h-5 w-5" />
                       {tab.label}
                       {tab.id === 'favoritos' && (
                         <span className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                          {favoriteIds.size}
+                          {getFavoriteEvents().length}
                         </span>
                       )}
                     </button>
@@ -866,36 +1187,95 @@ const DashboardPage = () => {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-hidden">
+        <main className={`flex-1 overflow-hidden md:pb-0 ${isMobile && activeTab === 'mapa' ? 'relative' : ''}`}>
           {renderContent()}
         </main>
       </div>
 
-      {/* Bottom Navigation - Mobile */}
-      <nav className="md:hidden bg-white/10 backdrop-blur-md border-t border-white/20">
-        <div className="flex">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex flex-col items-center py-3 px-1 transition-colors relative ${
-                  activeTab === tab.id ? 'text-white' : 'text-white/60'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs mt-1">{tab.label}</span>
-                {tab.id === 'favoritos' && favoriteIds.size > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                    {favoriteIds.size}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      {/* Bottom Navigation Bar para móvil */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 to-black/90 backdrop-blur-xl z-50 shadow-2xl pb-safe">
+        <div className="flex items-center justify-around py-2 px-2">
+          <button
+            onClick={() => setActiveTab('mapa')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'mapa' 
+                ? 'bg-purple-500/20 text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <MapPin className="h-5 w-5" />
+            <span className="text-xs font-medium">Mapa</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('eventos')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'eventos' 
+                ? 'bg-purple-500/20 text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Calendar className="h-5 w-5" />
+            <span className="text-xs font-medium">Eventos</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('favoritos')}
+            className={`relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'favoritos' 
+                ? 'bg-purple-500/20 text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Heart className="h-5 w-5" />
+            <span className="text-xs font-medium">Favoritos</span>
+            {getFavoriteEvents().length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+                {getFavoriteEvents().length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('perfil')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              activeTab === 'perfil' 
+                ? 'bg-purple-500/20 text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <User className="h-5 w-5" />
+            <span className="text-xs font-medium">Perfil</span>
+          </button>
         </div>
       </nav>
+
+      {/* Manager de notificaciones inteligentes */}
+      <SmartNotificationManager allEvents={allEvents} />
+
+      {/* Notificaciones de geofencing y retargeting */}
+      {smartNotifications.map(notification => (
+        <SmartNotificationToast
+          key={notification.id}
+          notification={notification}
+          onClose={() => {
+            setSmartNotifications(prev => prev.filter(n => n.id !== notification.id));
+          }}
+        />
+      ))}
+
+      {/* Chatbot con IA - Google Gemini */}
+      <AIAssistant
+        events={allEvents}
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
+        userPreferences={{
+          categories: profile?.preferred_categories || [],
+          location: profile?.city || '',
+          budget: profile?.budget || 'flexible'
+        }}
+      />
+
     </div>
   );
 };

@@ -230,7 +230,7 @@ const SmartNotificationToast = ({ notification, onClose, onEventClick }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes shrinkWidth {
           from {
             width: 100%;

@@ -112,7 +112,17 @@ const MobileMapView = ({ favoriteIds = new Set(), onFavoriteToggle = () => { } }
       setLoading(true);
       const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      setEvents(data || []);
+      
+      // Filtrar solo eventos activos (no archivados)
+      const now = new Date();
+      const activeEvents = (data || []).filter(event => {
+        const startDate = event.start_date ? new Date(event.start_date) : new Date(event.date);
+        const endDate = event.end_date ? new Date(event.end_date) : new Date(startDate.getTime() + 3 * 60 * 60 * 1000);
+        return endDate > now;
+      });
+      
+      console.log(`📱 [MobileMapView] Eventos cargados: ${data?.length || 0} total, ${activeEvents.length} activos`);
+      setEvents(activeEvents);
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
@@ -229,7 +239,11 @@ const MobileMapView = ({ favoriteIds = new Set(), onFavoriteToggle = () => { } }
                         </button>
                         
                         <button 
-                            onClick={(e) => { e.preventDefault(); onFavoriteToggle(evento.id); }} 
+                            onClick={(e) => { 
+                              e.preventDefault(); 
+                              console.log(`[MobileMapView] ❤️ Click en favorito - Event ID: ${evento.id}, Nombre: ${evento.nombre}`);
+                              onFavoriteToggle(evento.id); 
+                            }} 
                             className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all border ${isFavorite ? 'bg-red-50 border-red-100 text-red-600' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
                         >
                             <Heart size={14} fill={isFavorite ? "currentColor" : "none"}/> Guardar

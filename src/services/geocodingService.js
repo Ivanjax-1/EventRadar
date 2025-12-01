@@ -1,18 +1,19 @@
 // src/services/geocodingService.js
 
-const GEOCODING_API_KEY = import.meta.env.VITE_GEOCODING_API_KEY || 'demo-key';
+// No necesitamos API Key para Nominatim (OpenStreetMap) uso gratuito básico, 
+// pero sí necesitamos identificarnos con un User-Agent.
+const USER_AGENT = 'EventRadarApp/1.0'; 
 
 export const geocodingService = {
-  // Convertir dirección a coordenadas (Forward Geocoding)
+  
+  // 1. Convertir dirección a coordenadas
   async addressToCoordinates(address) {
     try {
-      // Primero intentar con Nominatim (OpenStreetMap) - gratuito
-      const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=cl&limit=1`;
+      // URL directa a OpenStreetMap
+      const apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=cl&limit=1`;
       
-      const response = await fetch(nominatimUrl, {
-        headers: {
-          'User-Agent': 'EventRadar/1.0'
-        }
+      const response = await fetch(apiUrl, {
+        headers: { 'User-Agent': USER_AGENT }
       });
 
       if (!response.ok) {
@@ -20,7 +21,7 @@ export const geocodingService = {
       }
 
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         const result = data[0];
         return {
@@ -31,7 +32,7 @@ export const geocodingService = {
         };
       }
 
-      // Si Nominatim no encuentra resultados, usar coordenadas por defecto de Santiago
+      // Si no hay resultados, usar coordenadas por defecto de Santiago
       return {
         latitude: -33.4489,
         longitude: -70.6693,
@@ -42,8 +43,6 @@ export const geocodingService = {
 
     } catch (error) {
       console.error('Error in addressToCoordinates:', error);
-      
-      // Fallback a coordenadas de Santiago
       return {
         latitude: -33.4489,
         longitude: -70.6693,
@@ -55,15 +54,14 @@ export const geocodingService = {
     }
   },
 
-  // Convertir coordenadas a dirección (Reverse Geocoding)
+  // 2. Convertir coordenadas a dirección (Reverse Geocoding)
   async coordinatesToAddress(latitude, longitude) {
     try {
-      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&countrycodes=cl`;
+      // URL directa a OpenStreetMap Reverse
+      const apiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
       
-      const response = await fetch(nominatimUrl, {
-        headers: {
-          'User-Agent': 'EventRadar/1.0'
-        }
+      const response = await fetch(apiUrl, {
+        headers: { 'User-Agent': USER_AGENT }
       });
 
       if (!response.ok) {
@@ -79,7 +77,7 @@ export const geocodingService = {
             street: data.address?.road,
             number: data.address?.house_number,
             neighborhood: data.address?.neighbourhood || data.address?.suburb,
-            city: data.address?.city || data.address?.town,
+            city: data.address?.city || data.address?.town || data.address?.village,
             region: data.address?.state,
             country: data.address?.country,
             postal_code: data.address?.postcode
@@ -87,17 +85,14 @@ export const geocodingService = {
           confidence: 0.8
         };
       }
-
       return {
         address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
         components: {},
         confidence: 0.1,
         fallback: true
       };
-
     } catch (error) {
       console.error('Error in coordinatesToAddress:', error);
-      
       return {
         address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
         components: {},
@@ -108,26 +103,28 @@ export const geocodingService = {
     }
   },
 
-  // Buscar lugares por nombre en Chile
+  // 3. Buscar lugares (Autocompletado) - ESTA ES LA QUE USA TU FORMULARIO
   async searchPlaces(query, options = {}) {
+    // Evitar búsquedas muy cortas
+    if (!query || query.length < 3) return [];
+
     try {
       const { 
         limit = 5, 
         countryCode = 'cl',
-        bounded = true,
         viewbox = '-75,-17,-66,-56' // Chile boundaries
       } = options;
 
-      let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${countryCode}&limit=${limit}&addressdetails=1`;
+      // URL directa a OpenStreetMap con addressdetails=1 para tener calles y ciudades
+      let apiUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=${countryCode}&limit=${limit}&addressdetails=1`;
       
-      if (bounded && viewbox) {
-        url += `&viewbox=${viewbox}&bounded=1`;
+      // Añadimos viewbox para priorizar resultados en Chile
+      if (viewbox) {
+        apiUrl += `&viewbox=${viewbox}&bounded=1`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'EventRadar/1.0'
-        }
+      const response = await fetch(apiUrl, {
+        headers: { 'User-Agent': USER_AGENT }
       });
 
       if (!response.ok) {
@@ -136,9 +133,14 @@ export const geocodingService = {
 
       const data = await response.json();
       
+      // Mapeamos los datos para mantener la estructura que tu app espera
       return data.map(place => ({
-        id: place.osm_id,
+        id: place.place_id, // Usamos place_id en vez de osm_id a veces es más estable
         name: place.display_name,
+        // Adaptamos para que el dropdown del formulario lo entienda fácil (label/value)
+        label: place.display_name, 
+        value: place.place_id,
+        
         latitude: parseFloat(place.lat),
         longitude: parseFloat(place.lon),
         type: place.type,
@@ -152,12 +154,13 @@ export const geocodingService = {
           country: place.address?.country
         }
       }));
-
     } catch (error) {
       console.error('Error in searchPlaces:', error);
       return [];
     }
   },
+
+  // --- UTILITIES (Se mantienen igual porque son lógica local) ---
 
   // Calcular distancia entre dos puntos (Haversine formula)
   calculateDistance(lat1, lon1, lat2, lon2) {
@@ -166,8 +169,7 @@ export const geocodingService = {
     const dLon = this.toRadians(lon2 - lon1);
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c; // Distancia en km
   },
@@ -176,29 +178,14 @@ export const geocodingService = {
     return degrees * (Math.PI/180);
   },
 
-  // Obtener eventos cercanos a una ubicación
+  // Obtener eventos cercanos a una ubicación (Placeholder)
   async getNearbyEvents(latitude, longitude, radiusKm = 10) {
-    try {
-      // Esta función trabajaría con Supabase para filtrar eventos por proximidad
-      // Por ahora retorna un placeholder
-      console.log(`Buscando eventos cerca de ${latitude}, ${longitude} en un radio de ${radiusKm}km`);
-      
-      // TODO: Implementar consulta PostGIS en Supabase
-      // SELECT *, ST_Distance(ST_MakePoint(longitude, latitude), ST_MakePoint($1, $2)) as distance
-      // FROM events 
-      // WHERE ST_DWithin(ST_MakePoint(longitude, latitude), ST_MakePoint($1, $2), $3)
-      // ORDER BY distance;
-      
-      return [];
-    } catch (error) {
-      console.error('Error finding nearby events:', error);
-      return [];
-    }
+    // Aquí normalmente conectarías con Supabase usando calculateDistance
+    return []; 
   },
 
   // Validar si las coordenadas están dentro de Chile
   isInChile(latitude, longitude) {
-    // Bounding box aproximado de Chile
     const chileBounds = {
       north: -17.5,
       south: -56,
@@ -214,7 +201,7 @@ export const geocodingService = {
     );
   },
 
-  // Obtener ubicación del usuario con geocoding automático
+  // Obtener ubicación del usuario
   async getUserLocation() {
     try {
       if (!navigator.geolocation) {
@@ -225,13 +212,13 @@ export const geocodingService = {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutos de cache
+          maximumAge: 300000 
         });
       });
 
       const { latitude, longitude } = position.coords;
       
-      // Obtener dirección de las coordenadas
+      // Reutilizamos la función interna corregida
       const addressData = await this.coordinatesToAddress(latitude, longitude);
       
       return {
@@ -245,7 +232,6 @@ export const geocodingService = {
     } catch (error) {
       console.error('Error getting user location:', error);
       
-      // Fallback a Santiago
       return {
         latitude: -33.4489,
         longitude: -70.6693,

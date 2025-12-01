@@ -1,7 +1,7 @@
 {
-  "name": "EventRadar - Tu Radar de Eventos Otaku",
+  "name": "EventRadar - Tu Radar de Eventos",
   "short_name": "EventRadar",
-  "description": "Descubre eventos otaku, conciertos, gastronomía y más en tu área",
+  "description": "Descubre eventos, conciertos, gastronomía y más en tu área",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

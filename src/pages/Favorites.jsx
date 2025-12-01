@@ -13,11 +13,12 @@ import FavoriteButton from '../components/FavoriteButton';
 const Favorites = () => {
   const { user } = useAuth();
 
-  const { data: favorites = [], isLoading, error } = useQuery({
+  const { data: favorites = [], isLoading, error, refetch } = useQuery({
     queryKey: ['favorites', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
+      console.log('🔄 Cargando favoritos desde Supabase...');
       const { data, error } = await supabase
         .from('favorites')
         .select(`
@@ -41,10 +42,19 @@ const Favorites = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data.map(fav => fav.events).filter(Boolean);
+      if (error) {
+        console.error('❌ Error cargando favoritos:', error);
+        throw error;
+      }
+      
+      const result = data.map(fav => fav.events).filter(Boolean);
+      console.log('✅ Favoritos cargados:', result.length);
+      return result;
     },
     enabled: !!user,
+    staleTime: 0, // Siempre refrescar
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   if (!user) {

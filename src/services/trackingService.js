@@ -5,6 +5,15 @@ class TrackingService {
   constructor() {
     // Solo necesitamos rastrear los tiempos de inicio de vista
     this.eventViewStartTime = {};
+    this.trackingAvailable = true;
+    this.trackingDisabledReason = null;
+  }
+
+  disableTracking(reason) {
+    if (!this.trackingAvailable) return;
+    this.trackingAvailable = false;
+    this.trackingDisabledReason = reason;
+    console.warn('⚠️ Tracking deshabilitado:', reason);
   }
 
   /**
@@ -33,22 +42,22 @@ class TrackingService {
 
     // Solo registrar si vio el evento por más de 2 segundos (filtro de rebote)
     if (durationSeconds >= 2) {
-      await this.trackInteraction(userId, eventId, 'view', durationSeconds);
+      await this.trackInteraction(userId, eventId, 'view', { durationSeconds });
     }
   }
 
   /**
    * Registrar cualquier tipo de interacción
    */
-  async trackInteraction(userId, eventId, interactionType, durationSeconds = null) {
-    if (!userId || !eventId) return;
+  async trackInteraction(userId, eventId, interactionType, metadata = {}) {
+    if (!userId || !interactionType || !this.trackingAvailable) return;
 
     try {
       const interaction = {
         user_id: userId,
-        event_id: eventId,
+        event_id: eventId || null,
         interaction_type: interactionType,
-        duration_seconds: durationSeconds,
+        interaction_data: Object.keys(metadata).length ? metadata : null,
         created_at: new Date().toISOString()
       };
 
@@ -60,12 +69,18 @@ class TrackingService {
       if (error) {
         // Ignoramos errores silenciosamente en producción, pero logueamos en dev
         console.warn('⚠️ Error tracking interaction (check RLS policies):', error.message);
+        if (error.code === '42501' || /permission denied/i.test(error.message)) {
+          this.disableTracking('Sin permisos para user_interactions');
+        }
       } else {
         // Opcional: comentar este log en producción para limpiar la consola
         console.log(`✅ Tracked ${interactionType} for event ${eventId}`);
       }
     } catch (error) {
       console.error('❌ Error in trackInteraction:', error);
+      if (error.code === '42501' || /permission denied/i.test(error.message)) {
+        this.disableTracking('Sin permisos para user_interactions');
+      }
     }
   }
 
@@ -80,7 +95,9 @@ class TrackingService {
    * Track favorito
    */
   async trackFavorite(userId, eventId, isAdding) {
-    return this.trackInteraction(userId, eventId, isAdding ? 'favorite_add' : 'favorite_remove');
+    return this.trackInteraction(userId, eventId, isAdding ? 'favorite_add' : 'favorite_remove', {
+      action: isAdding ? 'add' : 'remove'
+    });
   }
 
   /**
@@ -96,24 +113,10 @@ class TrackingService {
   async trackSearch(userId, searchQuery, resultsCount) {
     if (!userId || !searchQuery) return;
 
-    try {
-      const { error } = await supabase
-        .from('user_interactions')
-        .insert([{
-          user_id: userId,
-          interaction_type: 'search',
-          // Guardamos el término de búsqueda en metadata o duration si no hay campo específico
-          // Asumiendo que duration_seconds se usa para resultados aquí
-          duration_seconds: resultsCount, 
-          created_at: new Date().toISOString()
-        }]);
-
-      if (error) {
-        console.warn('⚠️ Error tracking search:', error.message);
-      }
-    } catch (error) {
-      console.error('❌ Error in trackSearch:', error);
-    }
+    return this.trackInteraction(userId, null, 'search', {
+      searchQuery,
+      resultsCount
+    });
   }
 
   /**
@@ -121,7 +124,7 @@ class TrackingService {
    * NOTA: Requiere que las políticas RLS en Supabase permitan el SELECT
    */
   async getUserInteractions(userId, limit = 100) {
-    if (!userId) return [];
+    if (!userId || !this.trackingAvailable) return [];
 
     try {
       const { data, error } = await supabase
@@ -135,6 +138,9 @@ class TrackingService {
       return data || [];
     } catch (error) {
       console.error('❌ Error fetching user interactions:', error);
+      if (error.code === '42501' || /permission denied/i.test(error.message)) {
+        this.disableTracking('Sin permisos para leer user_interactions');
+      }
       return [];
     }
   }

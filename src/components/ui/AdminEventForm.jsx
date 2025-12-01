@@ -20,7 +20,7 @@ const AdminEventForm = ({ onEventCreated }) => {
   });
 
   const eventCategories = {
-    'otaku': { emoji: '🎌', name: 'Otaku/Anime' },
+    'otaku': { emoji: '🎌', name: 'Anime' },
     'musica': { emoji: '🎵', name: 'Música' },
     'gastronomia': { emoji: '🍕', name: 'Gastronomía' },
     'deportes': { emoji: '⚽', name: 'Deportes' },

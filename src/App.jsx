@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ProfilePage from './pages/ProfilePage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import Favorites from './pages/Favorites';
+// import DebugPage from './pages/DebugPage'; // 👈 DESCOMENTAR SI TIENES ESTE ARCHIVO
 import './index.css';
 
 // ✅ HomePage público
@@ -114,9 +116,18 @@ const AppWithRouter = () => {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          {/* <Route path="/debug" element={<DebugPage />} />  👈 COMENTADO PARA EVITAR ERROR DE IMPORTACIÓN */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route 
             path="/dashboard" 
             element={
