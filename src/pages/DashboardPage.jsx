@@ -769,10 +769,18 @@ const DashboardPage = () => {
 
       case 'recomendados':
       case 'parati':
+      case 'para-ti':
         return (
           <div className="h-full overflow-y-auto">
             <div className="p-6 bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900 min-h-full">
               <div className="max-w-6xl mx-auto">
+                <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                  <Sparkles className="h-8 w-8 text-yellow-400" />
+                  Para Ti
+                </h2>
+                <p className="text-white/80 mb-8">
+                  Eventos recomendados basados en tus gustos y preferencias
+                </p>
                 <RecommendedEvents
                   allEvents={allEvents}
                   onEventClick={(eventId) => {
@@ -1010,6 +1018,7 @@ const DashboardPage = () => {
 
       case 'pricing':
       case 'suscripcion':
+      case 'suscripciones':
         return (
           <div className="h-full overflow-y-auto">
             <PricingPage />
@@ -1192,62 +1201,131 @@ const DashboardPage = () => {
         </main>
       </div>
 
-      {/* Bottom Navigation Bar para móvil */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 to-black/90 backdrop-blur-xl z-50 shadow-2xl pb-safe">
-        <div className="flex items-center justify-around py-2 px-2">
-          <button
-            onClick={() => setActiveTab('mapa')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-              activeTab === 'mapa' 
-                ? 'bg-purple-500/20 text-white' 
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <MapPin className="h-5 w-5" />
-            <span className="text-xs font-medium">Mapa</span>
-          </button>
+      {/* Bottom Navigation Bar para móvil - Scrolleable Horizontal */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-transparent backdrop-blur-xl z-50 shadow-2xl pb-safe border-t border-white/10">
+        {/* Indicador de scroll */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+        
+        {/* Contenedor scrolleable */}
+        <div className="overflow-x-auto overflow-y-hidden scrollbar-hide px-2 py-2">
+          <div className="flex items-center gap-2 min-w-max">
+            
+            {/* Botón Mapa */}
+            <button
+              onClick={() => setActiveTab('mapa')}
+              className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'mapa' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <MapPin className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Mapa</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('eventos')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-              activeTab === 'eventos' 
-                ? 'bg-purple-500/20 text-white' 
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <Calendar className="h-5 w-5" />
-            <span className="text-xs font-medium">Eventos</span>
-          </button>
+            {/* Botón Para Ti (Recomendaciones) */}
+            <button
+              onClick={() => setActiveTab('para-ti')}
+              className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'para-ti' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Para Ti</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('favoritos')}
-            className={`relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-              activeTab === 'favoritos' 
-                ? 'bg-purple-500/20 text-white' 
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <Heart className="h-5 w-5" />
-            <span className="text-xs font-medium">Favoritos</span>
-            {getFavoriteEvents().length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
-                {getFavoriteEvents().length}
-              </span>
+            {/* Botón Eventos */}
+            <button
+              onClick={() => setActiveTab('eventos')}
+              className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'eventos' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <Calendar className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Eventos</span>
+            </button>
+
+            {/* Botón Suscripciones */}
+            <button
+              onClick={() => setActiveTab('suscripciones')}
+              className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'suscripciones' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <Search className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Suscripciones</span>
+            </button>
+
+            {/* Botón Favoritos */}
+            <button
+              onClick={() => setActiveTab('favoritos')}
+              className={`relative flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'favoritos' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <Heart className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Favoritos</span>
+              {getFavoriteEvents().length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold min-w-[20px] text-center shadow-lg">
+                  {getFavoriteEvents().length}
+                </span>
+              )}
+            </button>
+
+            {/* Botón Crear Evento (Solo Admin o Premium) */}
+            {(isAdmin || isPremium) && (
+              <button
+                onClick={() => setActiveTab('crear')}
+                className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                  activeTab === 'crear' 
+                    ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/50 scale-105' 
+                    : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 border border-amber-500/30'
+                }`}
+              >
+                <Plus className="h-5 w-5" />
+                <span className="text-xs font-semibold whitespace-nowrap">Crear</span>
+              </button>
             )}
-          </button>
 
-          <button
-            onClick={() => setActiveTab('perfil')}
-            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-              activeTab === 'perfil' 
-                ? 'bg-purple-500/20 text-white' 
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <User className="h-5 w-5" />
-            <span className="text-xs font-medium">Perfil</span>
-          </button>
+            {/* Botón Perfil */}
+            <button
+              onClick={() => setActiveTab('perfil')}
+              className={`flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 ${
+                activeTab === 'perfil' 
+                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                  : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <User className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Perfil</span>
+            </button>
+
+          </div>
         </div>
+        
+        {/* Gradientes laterales para indicar scroll */}
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/90 to-transparent pointer-events-none"></div>
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/90 to-transparent pointer-events-none"></div>
+      </nav>
+
+      {/* Estilos para ocultar scrollbar */}
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       </nav>
 
       {/* Manager de notificaciones inteligentes */}
