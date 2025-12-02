@@ -179,8 +179,7 @@ body {
   
   /* Ajustar el mapa en móviles */
   .leaflet-container {
-    margin-bottom: 30px;
-    height: calc(100vh - 140px) !important; /* Ajustar altura para móviles */
+    height: 100% !important; /* Usar altura completa del contenedor */
   }
   
   /* Asegurar que los botones flotantes no interfieran */

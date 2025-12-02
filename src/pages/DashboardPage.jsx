@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, Calendar, User, Menu, X, LogOut, Home, Heart, Search, Filter, SortAsc, Plus, Sparkles, DollarSign, Bot } from 'lucide-react';
+import { MapPin, Calendar, User, Menu, X, LogOut, Home, Heart, Search, Filter, SortAsc, Plus, Sparkles, DollarSign, Bot, MessageCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserRole } from '../hooks/useUserRole';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -1047,10 +1047,15 @@ const DashboardPage = () => {
         );
 
       default:
+        // En móvil, el mapa ocupa toda la pantalla sin padding
+        if (isMobile) {
+          return <MobileMapView />;
+        }
+        // En desktop, mantener el padding y estilo
         return (
           <div className="h-full bg-gradient-to-br from-purple-100/20 to-pink-100/20 p-4">
             <div className="h-full rounded-xl overflow-hidden shadow-lg">
-              {isMobile ? <MobileMapView /> : <MapView />}
+              <MapView />
             </div>
           </div>
         );
@@ -1202,9 +1207,9 @@ const DashboardPage = () => {
       </div>
 
       {/* Bottom Navigation Bar para móvil - Scrolleable Horizontal */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/90 to-transparent backdrop-blur-xl z-50 shadow-2xl pb-safe border-t border-white/10">
-        {/* Indicador de scroll */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl z-50 shadow-2xl pb-safe">
+        {/* Indicador de scroll - Completamente oculto */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-transparent"></div>
         
         {/* Contenedor scrolleable */}
         <div className="overflow-x-auto overflow-y-hidden scrollbar-hide px-2 py-2">
@@ -1306,6 +1311,15 @@ const DashboardPage = () => {
             >
               <User className="h-5 w-5" />
               <span className="text-xs font-semibold whitespace-nowrap">Perfil</span>
+            </button>
+
+            {/* Botón Chatbot */}
+            <button
+              onClick={() => setShowChatbot(true)}
+              className="flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 bg-gradient-to-br from-blue-500 to-cyan-500 text-white hover:shadow-lg hover:shadow-blue-500/50 hover:scale-105"
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span className="text-xs font-semibold whitespace-nowrap">Ayuda</span>
             </button>
 
           </div>

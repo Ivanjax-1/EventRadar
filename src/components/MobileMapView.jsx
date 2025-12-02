@@ -147,10 +147,10 @@ const MobileMapView = ({ favoriteIds = new Set(), onFavoriteToggle = () => { } }
 
   const handleEventUpdated = () => { loadEvents(); setEditModal({ isOpen: false, event: null }); };
 
-  if (loading && events.length === 0) return <div className="h-full w-full flex items-center justify-center bg-zinc-900"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div></div>;
+  if (loading && events.length === 0) return <div className="h-full w-full flex items-center justify-center bg-transparent"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div></div>;
 
   return (
-    <div className="absolute inset-0 w-full h-full overflow-hidden bg-zinc-900"> 
+    <div className="absolute inset-0 w-full h-full overflow-hidden"> 
       
       {/* --- UI FLOTANTE: MENÚ ESTILO DARK GLASS --- */}
       <div className="absolute top-4 left-4 z-[400] flex flex-col items-start gap-2 pointer-events-none">
