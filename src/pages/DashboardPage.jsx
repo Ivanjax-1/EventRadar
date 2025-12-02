@@ -1196,7 +1196,7 @@ const DashboardPage = () => {
         )}
 
         {/* Main Content */}
-        <main className={`flex-1 overflow-hidden md:pb-0 ${isMobile && activeTab === 'mapa' ? 'relative' : ''}`}>
+        <main className={`flex-1 overflow-hidden md:pb-0 ${isMobile && activeTab === 'mapa' ? 'absolute inset-0' : ''}`}>
           {renderContent()}
         </main>
       </div>
@@ -1314,18 +1314,17 @@ const DashboardPage = () => {
         {/* Gradientes laterales para indicar scroll */}
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/90 to-transparent pointer-events-none"></div>
         <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/90 to-transparent pointer-events-none"></div>
-      </nav>
-
-      {/* Estilos para ocultar scrollbar */}
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
+        
+        {/* Estilos para ocultar scrollbar */}
+        <style jsx>{`
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}</style>
       </nav>
 
       {/* Manager de notificaciones inteligentes */}
