@@ -124,7 +124,7 @@ const LoginPage = () => {
             className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white/90 text-sm"
           >
             <Coffee className="h-4 w-4" />
-            ¡Bienvenido de vuelta!
+            ¡Un nuevo Evento te espera!
           </motion.div>
         </motion.div>
 
@@ -319,8 +319,8 @@ const LoginPage = () => {
               </p>
               <div className="text-white/70 text-xs space-y-1">
                 <div>🗺️ Ver eventos en el mapa interactivo</div>
-                <div>🎌 Filtrar por categorías</div>
-                <div>➕ Crear eventos (si eres admin)</div>
+                <div>🎯 Filtrar por categorías</div>
+                <div>➕ Crear eventos</div>
                 <div>📱 Recibir notificaciones de nuevos eventos</div>
               </div>
             </div>
