@@ -16,28 +16,23 @@ export const useUserRole = () => {
 
     const fetchUserRole = async () => {
       try {
-        // Por ahora, todos los usuarios son admins para testing
-        // Luego cambiaremos esto por la consulta real a Supabase
         console.log('👤 Checking user role for:', user.email);
         
-        // ✅ TEMPORAL: Hacer admin al primer usuario
-        setRole('admin'); // Cambiar a 'user' si no quieres ser admin
-        
-        /* 
-        // ✅ VERSIÓN FINAL (descomenta cuando tengas la tabla):
+        // ✅ Consultar rol desde la tabla profiles
         const { data, error } = await supabase
-          .from('user_roles')
+          .from('profiles')
           .select('role')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single();
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error fetching role:', error);
           setRole('user');
         } else {
-          setRole(data?.role || 'user');
+          const userRole = data?.role || 'user';
+          console.log('✅ User role:', userRole);
+          setRole(userRole);
         }
-        */
       } catch (error) {
         console.error('Error in fetchUserRole:', error);
         setRole('user');
