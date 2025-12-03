@@ -1315,7 +1315,7 @@ const DashboardPage = () => {
 
             {/* Botón Chatbot */}
             <button
-              onClick={() => setShowChatbot(true)}
+              onClick={() => setShowAIChat(true)}
               className="flex flex-col items-center gap-1 px-5 py-2.5 rounded-2xl transition-all flex-shrink-0 bg-gradient-to-br from-blue-500 to-cyan-500 text-white hover:shadow-lg hover:shadow-blue-500/50 hover:scale-105"
             >
               <MessageCircle className="h-5 w-5" />

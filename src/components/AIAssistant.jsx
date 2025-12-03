@@ -216,7 +216,7 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-end md:items-center justify-center md:p-4"
         onClick={onClose}
       >
         <motion.div
@@ -224,27 +224,27 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-full max-w-2xl h-[600px] bg-gradient-to-br from-purple-900/95 via-indigo-900/95 to-blue-900/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-white/20"
+          className="w-full md:max-w-2xl h-full md:h-[600px] bg-gradient-to-br from-purple-900/95 via-indigo-900/95 to-blue-900/95 backdrop-blur-xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col border-t md:border border-white/20"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 flex items-center justify-between border-b border-white/20">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-pulse">
-                <Bot className="w-6 h-6 text-white" />
+          <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 md:p-6 flex items-center justify-between border-b border-white/20 safe-area-top">
+            <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm animate-pulse flex-shrink-0">
+                <Bot className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  EventAssistant
-                  <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                  <span className="truncate">EventAssistant</span>
+                  <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-yellow-300 animate-pulse flex-shrink-0" />
                 </h2>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-white/80">
+                  <p className="text-xs md:text-sm text-white/80 truncate">
                     Powered by {aiService.getModelName()}
                   </p>
                   {aiService.isConfigured() && (
                     <span className={`
-                      text-xs px-2 py-0.5 rounded-full font-semibold
+                      text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0
                       ${aiService.getProvider() === 'gemini' ? 'bg-green-500/20 text-green-300 border border-green-400/30' : ''}
                       ${aiService.getProvider() === 'deepseek' ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30' : ''}
                       ${aiService.getProvider() === 'openai' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : ''}
@@ -255,7 +255,7 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
                     </span>
                   )}
                   {!aiService.isConfigured() && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-400/30">
+                    <span className="text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 rounded-full font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-400/30 whitespace-nowrap flex-shrink-0">
                       ⚠️ No configurado
                     </span>
                   )}
@@ -265,9 +265,10 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
             
             <button
               onClick={onClose}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-2 md:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors active:scale-95 ml-2 flex-shrink-0"
+              aria-label="Cerrar chat"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-5 h-5 md:w-5 md:h-5 text-white" />
             </button>
           </div>
 
