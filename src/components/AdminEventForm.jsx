@@ -86,7 +86,7 @@ const AdminEventForm = ({ onEventCreated, alwaysOpen = false }) => {
         console.error('⚠️ Error enviando notificaciones:', notifError);
       }
 
-      setNotification({ type: 'success', message: '¡Felicitaciones! Has creado tu nuevo evento! 🎉' });
+      setNotification({ type: 'success', message: '🎉 ¡Increíble! Tu evento ha sido creado exitosamente y ya está visible para todos. ¡Prepárate para recibir asistentes! 🚀' });
       
       // Limpiar formulario
       setFormData({
@@ -97,7 +97,9 @@ const AdminEventForm = ({ onEventCreated, alwaysOpen = false }) => {
       });
       
       if (onEventCreated) onEventCreated(result.data);
-      if (!alwaysOpen) setTimeout(() => setIsOpen(false), 2000);
+      
+      // Cerrar el modal después de 3 segundos para que vean el mensaje
+      if (!alwaysOpen) setTimeout(() => setIsOpen(false), 3000);
 
     } catch (error) {
       console.error('❌ Error creando evento:', error);
@@ -180,6 +182,8 @@ const AdminEventForm = ({ onEventCreated, alwaysOpen = false }) => {
     }
   };
 
+  console.log('AdminEventForm render:', { isOpen, alwaysOpen, isMinimized });
+
   return (
     <>
       {/* Botón flotante para abrir modal (solo si no es alwaysOpen) */}
@@ -212,9 +216,19 @@ const AdminEventForm = ({ onEventCreated, alwaysOpen = false }) => {
               {!isMinimized && (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   
+                  {/* Notificación de éxito/error - Ahora más visible */}
                   {notification && (
-                    <div className={`p-4 rounded-xl text-sm font-medium ${notification.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                      {notification.message}
+                    <div className={`p-4 md:p-5 rounded-xl md:rounded-2xl text-sm md:text-base font-bold shadow-2xl ${
+                      notification.type === 'success' 
+                        ? 'bg-gradient-to-r from-green-400 via-emerald-400 to-green-500 text-white border-4 border-green-200 shadow-green-300' 
+                        : 'bg-gradient-to-r from-red-400 to-pink-500 text-white border-4 border-red-200 shadow-red-300'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl md:text-3xl">
+                          {notification.type === 'success' ? '🎉' : '⚠️'}
+                        </span>
+                        <span className="flex-1">{notification.message}</span>
+                      </div>
                     </div>
                   )}
 

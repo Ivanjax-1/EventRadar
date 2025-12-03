@@ -34,6 +34,7 @@ const DashboardPage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showEventCreatedToast, setShowEventCreatedToast] = useState(false);
 
   // Detectar si vienen desde una notificación
   useEffect(() => {
@@ -628,6 +629,12 @@ const DashboardPage = () => {
   const handleEventCreated = (newEvent) => {
     console.log('✅ Nuevo evento creado:', newEvent);
     setRefreshTrigger(prev => prev + 1);
+    
+    // Mostrar toast de éxito
+    setShowEventCreatedToast(true);
+    setTimeout(() => {
+      setShowEventCreatedToast(false);
+    }, 6000);
   };
 
   // Renderizar botón de favorito simple
@@ -1366,6 +1373,47 @@ const DashboardPage = () => {
           budget: profile?.budget || 'flexible'
         }}
       />
+
+      {/* Toast de evento creado exitosamente */}
+      {showEventCreatedToast && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[10000] animate-slideDown">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 min-w-[320px] md:min-w-[400px]">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center animate-bounce">
+                <span className="text-3xl">🎉</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg mb-1">¡Evento Creado!</h3>
+              <p className="text-sm text-white/90">Tu evento ha sido publicado exitosamente y ya está visible para todos. 🚀</p>
+            </div>
+            <button
+              onClick={() => setShowEventCreatedToast(false)}
+              className="flex-shrink-0 text-white/80 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -100%);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.4s ease-out;
+        }
+      `}</style>
 
     </div>
   );
