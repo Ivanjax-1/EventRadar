@@ -107,87 +107,127 @@ CREATE POLICY "Users can create their own profile"
   WITH CHECK (auth.uid() = id);
 
 -- ============================================
--- 4. TABLA EVENT_CATEGORIES - Categorías públicas
+-- 4. TABLA EVENT_CATEGORIES - Categorías públicas (OPCIONAL)
 -- ============================================
+-- NOTA: Esta tabla puede no existir aún.
 
--- Habilitar RLS (si existe la tabla)
-ALTER TABLE IF EXISTS event_categories ENABLE ROW LEVEL SECURITY;
-
--- Todos pueden ver categorías
-DROP POLICY IF EXISTS "Anyone can view categories" ON event_categories;
-CREATE POLICY "Anyone can view categories"
-  ON event_categories FOR SELECT
-  USING (true);
-
--- ============================================
--- 5. TABLA NOTIFICATIONS - Notificaciones de usuarios
--- ============================================
-
--- Habilitar RLS (si existe la tabla)
-ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
-
--- Usuarios solo ven sus propias notificaciones
-DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
-CREATE POLICY "Users can view their own notifications"
-  ON notifications FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
-
--- Usuarios pueden actualizar sus notificaciones (marcar como leídas)
-DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
-CREATE POLICY "Users can update their own notifications"
-  ON notifications FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = user_id);
-
--- Sistema puede crear notificaciones
-DROP POLICY IF EXISTS "System can create notifications" ON notifications;
-CREATE POLICY "System can create notifications"
-  ON notifications FOR INSERT
-  TO authenticated
-  WITH CHECK (true);
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'event_categories') THEN
+    -- Habilitar RLS
+    ALTER TABLE event_categories ENABLE ROW LEVEL SECURITY;
+    
+    -- Todos pueden ver categorías
+    DROP POLICY IF EXISTS "Anyone can view categories" ON event_categories;
+    CREATE POLICY "Anyone can view categories"
+      ON event_categories FOR SELECT
+      USING (true);
+      
+    RAISE NOTICE '✅ Políticas RLS aplicadas a tabla event_categories';
+  ELSE
+    RAISE NOTICE '⚠️ Tabla event_categories no existe (se omite)';
+  END IF;
+END $$;
 
 -- ============================================
--- 6. TABLA PAYMENTS - Pagos de usuarios
+-- 5. TABLA NOTIFICATIONS - Notificaciones de usuarios (OPCIONAL)
 -- ============================================
+-- NOTA: Esta tabla puede no existir aún.
 
--- Habilitar RLS (si existe la tabla)
-ALTER TABLE IF EXISTS payments ENABLE ROW LEVEL SECURITY;
-
--- Usuarios solo ven sus propios pagos
-DROP POLICY IF EXISTS "Users can view their own payments" ON payments;
-CREATE POLICY "Users can view their own payments"
-  ON payments FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
-
--- Solo sistema puede crear pagos
-DROP POLICY IF EXISTS "System can create payments" ON payments;
-CREATE POLICY "System can create payments"
-  ON payments FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'notifications') THEN
+    -- Habilitar RLS
+    ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+    
+    -- Usuarios solo ven sus propias notificaciones
+    DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
+    CREATE POLICY "Users can view their own notifications"
+      ON notifications FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+    
+    -- Usuarios pueden actualizar sus notificaciones (marcar como leídas)
+    DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
+    CREATE POLICY "Users can update their own notifications"
+      ON notifications FOR UPDATE
+      TO authenticated
+      USING (auth.uid() = user_id);
+    
+    -- Sistema puede crear notificaciones
+    DROP POLICY IF EXISTS "System can create notifications" ON notifications;
+    CREATE POLICY "System can create notifications"
+      ON notifications FOR INSERT
+      TO authenticated
+      WITH CHECK (true);
+      
+    RAISE NOTICE '✅ Políticas RLS aplicadas a tabla notifications';
+  ELSE
+    RAISE NOTICE '⚠️ Tabla notifications no existe (se omite)';
+  END IF;
+END $$;
 
 -- ============================================
--- 7. TABLA SUBSCRIPTIONS - Suscripciones premium
+-- 6. TABLA PAYMENTS - Pagos de usuarios (OPCIONAL)
 -- ============================================
+-- NOTA: Esta tabla puede no existir aún. Las políticas se crearán cuando exista.
 
--- Habilitar RLS (si existe la tabla)
-ALTER TABLE IF EXISTS subscriptions ENABLE ROW LEVEL SECURITY;
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'payments') THEN
+    -- Habilitar RLS
+    ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+    
+    -- Usuarios solo ven sus propios pagos
+    DROP POLICY IF EXISTS "Users can view their own payments" ON payments;
+    CREATE POLICY "Users can view their own payments"
+      ON payments FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+    
+    -- Solo sistema puede crear pagos
+    DROP POLICY IF EXISTS "System can create payments" ON payments;
+    CREATE POLICY "System can create payments"
+      ON payments FOR INSERT
+      TO authenticated
+      WITH CHECK (auth.uid() = user_id);
+      
+    RAISE NOTICE '✅ Políticas RLS aplicadas a tabla payments';
+  ELSE
+    RAISE NOTICE '⚠️ Tabla payments no existe (se omite)';
+  END IF;
+END $$;
 
--- Usuarios solo ven sus propias suscripciones
-DROP POLICY IF EXISTS "Users can view their own subscriptions" ON subscriptions;
-CREATE POLICY "Users can view their own subscriptions"
-  ON subscriptions FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+-- ============================================
+-- 7. TABLA SUBSCRIPTIONS - Suscripciones premium (OPCIONAL)
+-- ============================================
+-- NOTA: Esta tabla puede no existir aún. Las políticas se crearán cuando exista.
 
--- Sistema puede crear/actualizar suscripciones
-DROP POLICY IF EXISTS "System can manage subscriptions" ON subscriptions;
-CREATE POLICY "System can manage subscriptions"
-  ON subscriptions FOR ALL
-  TO authenticated
-  USING (auth.uid() = user_id);
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'subscriptions') THEN
+    -- Habilitar RLS
+    ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+    
+    -- Usuarios solo ven sus propias suscripciones
+    DROP POLICY IF EXISTS "Users can view their own subscriptions" ON subscriptions;
+    CREATE POLICY "Users can view their own subscriptions"
+      ON subscriptions FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+    
+    -- Sistema puede crear/actualizar suscripciones
+    DROP POLICY IF EXISTS "System can manage subscriptions" ON subscriptions;
+    CREATE POLICY "System can manage subscriptions"
+      ON subscriptions FOR ALL
+      TO authenticated
+      USING (auth.uid() = user_id);
+      
+    RAISE NOTICE '✅ Políticas RLS aplicadas a tabla subscriptions';
+  ELSE
+    RAISE NOTICE '⚠️ Tabla subscriptions no existe (se omite)';
+  END IF;
+END $$;
 
 -- ============================================
 -- 8. VERIFICACIÓN - Comprobar RLS habilitado
