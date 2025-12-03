@@ -321,11 +321,25 @@ const AdminEventForm = ({ onEventCreated, alwaysOpen = false }) => {
 
                   {/* Descripción con IA */}
                   <div>
-                    <div className="flex justify-between items-center mb-1">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
                         <label className="block text-sm font-medium text-gray-700">📄 Descripción *</label>
-                        <button type="button" onClick={handleGenerateDescription} disabled={generatingDescription || !formData.title} className="text-xs flex items-center gap-1 text-purple-600 font-bold hover:text-purple-800 disabled:opacity-50">
-                            {generatingDescription ? <Loader2 className="animate-spin h-3 w-3"/> : <Wand2 className="h-3 w-3"/>}
-                            {generatingDescription ? 'Generando...' : 'Mejorar con IA'}
+                        <button 
+                          type="button" 
+                          onClick={handleGenerateDescription} 
+                          disabled={generatingDescription || !formData.title} 
+                          className="w-full sm:w-auto px-3 py-2 text-xs sm:text-xs flex items-center justify-center gap-1.5 text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                        >
+                            {generatingDescription ? (
+                              <>
+                                <Loader2 className="animate-spin h-4 w-4"/>
+                                <span>Generando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Wand2 className="h-4 w-4"/>
+                                <span>✨ Mejorar con IA</span>
+                              </>
+                            )}
                         </button>
                     </div>
                     <textarea 

@@ -39,6 +39,75 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
       return '👤 ¡Claro! Si necesitas hablar con un asistente humano, contáctanos directamente:\n\n📧 Email: contactoempresa@eventradar.com\n\nNuestro equipo te ayudará personalmente. ¿Hay algo más que pueda hacer por ti mientras tanto?';
     }
     
+    // Detectar búsqueda por ubicación
+    if (m.match(/(valparaíso|valparaiso|viña del mar|viña|vina|quinta región|v región)/)) {
+      const localEvents = availableEvents.filter(e => 
+        e.location?.toLowerCase().includes('valparaíso') || 
+        e.location?.toLowerCase().includes('viña') ||
+        e.location?.toLowerCase().includes('valparaiso') ||
+        e.location?.toLowerCase().includes('vina')
+      );
+      
+      if (localEvents.length > 0) {
+        return `📍 ¡Tengo ${localEvents.length} eventos en Valparaíso y Viña del Mar! Te recomiendo "${localEvents[0].title}" en ${localEvents[0].location}. Usa el mapa para ver todos los eventos cerca de ti. ¿Quieres que te cuente de alguno en específico?`;
+      }
+      return '📍 Hay muchos eventos en Valparaíso y Viña del Mar. Usa el mapa interactivo para explorar eventos cerca de ti o filtra por ubicación. ¿Buscas algo específico en la zona?';
+    }
+    
+    // Detectar búsqueda de categorías específicas
+    if (m.match(/(anime|manga|otaku|cosplay)/)) {
+      const animeEvents = availableEvents.filter(e => 
+        e.category?.toLowerCase().includes('anime') || 
+        e.title?.toLowerCase().includes('anime') ||
+        e.title?.toLowerCase().includes('manga')
+      );
+      
+      if (animeEvents.length > 0) {
+        return `🎌 ¡Hay ${animeEvents.length} eventos de anime/manga! "${animeEvents[0].title}" podría interesarte. ¿Eres fan de alguna serie en particular?`;
+      }
+      return '🎌 Filtra por categoría "Anime" para ver convenciones, proyecciones y eventos otaku. ¿Buscas algo específico como cosplay o proyecciones?';
+    }
+    
+    // Detectar búsqueda por precio
+    if (m.match(/(barato|económico|precio|costo|cuánto cuesta|cuanto cuesta)/)) {
+      const affordableEvents = availableEvents.filter(e => !e.price || e.price === 0 || e.price < 5000);
+      
+      if (affordableEvents.length > 0) {
+        return `💰 Encontré ${affordableEvents.length} eventos económicos. "${affordableEvents[0].title}" ${affordableEvents[0].price === 0 ? 'es gratis' : `cuesta $${affordableEvents[0].price}`}. Usa el filtro de precio para ajustar tu presupuesto.`;
+      }
+      return '💰 Usa el filtro de precio en la página de eventos para encontrar opciones que se ajusten a tu presupuesto. Hay eventos desde gratuitos hasta premium.';
+    }
+    
+    // Detectar búsqueda por horario
+    if (m.match(/(noche|nocturno|tarde|mañana|madrugada)/)) {
+      if (m.includes('noche') || m.includes('nocturno')) {
+        return '🌙 Para eventos nocturnos, revisa los horarios en cada evento. Muchos conciertos y fiestas comienzan después de las 20:00. ¿Buscas algo específico como música en vivo o fiestas?';
+      }
+      if (m.includes('tarde')) {
+        return '🌆 Los eventos de tarde generalmente son de 15:00 a 20:00. Encuentra ferias gastronómicas, exposiciones y eventos familiares. ¿Qué tipo de evento te gustaría?';
+      }
+      return '🌅 Los eventos matutinos son perfectos para actividades al aire libre y deportes. Revisa el mapa para eventos temprano en el día.';
+    }
+    
+    // Detectar búsqueda de eventos para niños/familia
+    if (m.match(/(niños|niño|familia|familiar|infantil|kids)/)) {
+      return '👨‍👩‍👧‍👦 Para eventos familiares, busca en categorías como "Gastronomía" (ferias), "Deportes" o eventos al aire libre. Muchos incluyen actividades para niños. ¿Buscas algo específico?';
+    }
+    
+    // Detectar tecnología
+    if (m.match(/(tecnología|tech|programación|software|hackathon|tecnológico)/)) {
+      const techEvents = availableEvents.filter(e => 
+        e.category?.toLowerCase().includes('tecnologia') ||
+        e.category?.toLowerCase().includes('tech') ||
+        e.title?.toLowerCase().includes('tech')
+      );
+      
+      if (techEvents.length > 0) {
+        return `💻 Hay ${techEvents.length} eventos tech. "${techEvents[0].title}" podría interesarte. Perfecto para desarrolladores y entusiastas de la tecnología.`;
+      }
+      return '💻 Los eventos de tecnología incluyen hackathons, charlas y workshops. Filtra por "Tecnología" para ver todas las opciones disponibles.';
+    }
+    
     if (m.includes('música') || m.includes('concierto') || m.includes('music')) {
       const musicEvents = availableEvents.filter(e => 
         e.event_categories?.name?.toLowerCase().includes('música') || 
@@ -102,6 +171,62 @@ const AIAssistant = ({ events = [], isOpen, onClose, userPreferences = {} }) => 
     
     if (m.includes('arte') || m.includes('art') || m.includes('exposición')) {
       return '🎨 Los eventos de arte están en pleno auge. Filtra por "Arte" para ver exposiciones, galerías y talleres creativos. ¿Prefieres arte contemporáneo o clásico?';
+    }
+    
+    // Detectar consultas sobre clima/temporada
+    if (m.match(/(clima|lluvia|sol|verano|invierno)/)) {
+      return '☀️ Te recomiendo revisar el clima antes de asistir a eventos al aire libre. Muchos eventos tienen alternativas bajo techo. ¿Buscas eventos indoor o outdoor?';
+    }
+    
+    // Detectar consultas sobre transporte/estacionamiento
+    if (m.match(/(transporte|estacionamiento|parking|cómo llegar|como llegar|metro|bus)/)) {
+      return '🚗 Usa el botón "Ir ahora" en cada evento para abrir Waze, Google Maps o Uber y navegar fácilmente. ¡Te llevamos directo al evento!';
+    }
+    
+    // Detectar consultas sobre entradas/tickets
+    if (m.match(/(entrada|ticket|boleto|comprar|reservar)/)) {
+      return '🎫 Los detalles de entradas están en cada evento. Algunos son de entrada libre y otros requieren compra anticipada. ¿Buscas un evento específico?';
+    }
+    
+    // Detectar consultas sobre comida/bebida
+    if (m.match(/(comer|beber|restaurant|bar|cerveza|vino)/)) {
+      return '🍽️ Muchos eventos incluyen opciones gastronómicas. Revisa la categoría "Gastronomía" para festivales de comida, catas y experiencias culinarias. ¿Algún tipo de cocina en particular?';
+    }
+    
+    // Detectar consultas sobre música en vivo
+    if (m.match(/(música en vivo|musica en vivo|banda|banda en vivo|show en vivo)/)) {
+      const liveEvents = availableEvents.filter(e => 
+        e.title?.toLowerCase().includes('vivo') ||
+        e.title?.toLowerCase().includes('concierto') ||
+        e.category?.toLowerCase().includes('música')
+      );
+      
+      if (liveEvents.length > 0) {
+        return `🎸 ¡Hay ${liveEvents.length} eventos con música en vivo! "${liveEvents[0].title}" tiene muy buena pinta. ¿Qué género musical prefieres?`;
+      }
+      return '🎸 Para música en vivo, filtra por "Música" o "Conciertos". Siempre hay bandas tocando en la región. ¿Rock, pop, jazz?';
+    }
+    
+    // Detectar días de la semana específicos
+    if (m.match(/(lunes|martes|miércoles|miercoles|jueves|viernes)/)) {
+      const dayMatch = m.match(/(lunes|martes|miércoles|miercoles|jueves|viernes)/);
+      const day = dayMatch ? dayMatch[0] : '';
+      return `📆 Para eventos del ${day}, usa el filtro de fecha en la página principal. Muchos lugares tienen promociones entre semana. ¿Buscas algo en particular?`;
+    }
+    
+    // Detectar consultas sobre actividades específicas
+    if (m.match(/(taller|workshop|curso|clase|aprender)/)) {
+      return '📚 Los talleres y workshops suelen estar en categorías como "Arte", "Tecnología" o eventos especiales. ¿Qué te gustaría aprender?';
+    }
+    
+    // Detectar consultas sobre grupos/edad
+    if (m.match(/(adulto|mayor|tercera edad|senior)/)) {
+      return '👴 Hay eventos para todas las edades. Muchas exposiciones, conciertos y eventos culturales son ideales para adultos mayores. ¿Algún interés en particular?';
+    }
+    
+    // Detectar consultas sobre mascotas
+    if (m.match(/(mascota|perro|pet|dog friendly)/)) {
+      return '🐕 Algunos eventos al aire libre admiten mascotas. Revisa la descripción de cada evento para confirmar si son pet-friendly. ¿Buscas un evento específico?';
     }
     
     // Respuesta por defecto con sugerencias

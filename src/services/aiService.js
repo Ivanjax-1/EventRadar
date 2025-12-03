@@ -137,8 +137,15 @@ Genera solo la descripción, sin títulos ni encabezados.
     const location = eventData?.location ? `en ${eventData.location}` : '';
     const date = eventData?.date ? `el ${eventData.date}` : '';
     const price = (eventData?.price === 0 || eventData?.price === '0') ? 'Entrada gratuita' : (eventData?.price ? `Precio: $${eventData.price}` : 'Precio por confirmar');
+    const emoji = this._getEmojiForCategory(eventData?.category);
 
     const variants = [];
+
+    // Descripción específica por categoría
+    const categoryDescriptions = this._getCategorySpecificDescription(eventData);
+    if (categoryDescriptions) {
+      variants.push(...categoryDescriptions);
+    }
 
     // Variante 1: corta y directa
     variants.push(`${title} ${category} ${location} ${date}. ${price}. Una experiencia pensada para conectar con personas afines y disfrutar de momentos únicos. ¡Reserva tu lugar! 🎟️`);
@@ -158,16 +165,96 @@ Genera solo la descripción, sin títulos ni encabezados.
     variants.push(`¡Hey! 👋 No te pierdas ${title} ${category} ${location}. ${casualPrice} te llevas una experiencia increíble, conoces gente copada y te diviertes un montón. ¿Vas a faltar? ¡Dale, anótate! 🚀`);
 
     // Variante 6: redes sociales (llamativo y corto)
-    const emoji = this._getEmojiForCategory(eventData?.category);
     const hashtag = eventData?.category ? `#${eventData.category.charAt(0).toUpperCase() + eventData.category.slice(1)}` : '#Evento';
     variants.push(`${emoji} ¡IMPERDIBLE! ${title} es EL evento que estabas esperando. Entradas limitadas, experiencia única. ¿Te lo vas a perder? 👀 ¡Reserva YA! ${hashtag} #EventRadar #NoTeLoPierdas`);
 
-    // Variante 7 (bonus): one-liner para marketing
-    if (count > 6) {
-      variants.push(`${emoji} ${title}: la experiencia que transforma. ¡Asegura tu lugar hoy!`);
-    }
+    // Variante 7: one-liner para marketing
+    variants.push(`${emoji} ${title}: la experiencia que transforma. ¡Asegura tu lugar hoy!`);
+
+    // Variante 8: enfocada en la comunidad
+    variants.push(`Únete a ${title} ${location} ${date} y forma parte de una comunidad apasionada. ${price}. Más que un evento, una oportunidad para crecer, aprender y conectar con personas increíbles. ¡Te esperamos! ✨`);
+
+    // Variante 9: urgencia y FOMO
+    variants.push(`⏰ ¡ÚLTIMO LLAMADO! ${title} ${location} ${date}. ${price}. Los cupos se agotan rápido y no querrás quedarte fuera de esta experiencia única. Confirma tu asistencia ahora antes de que sea tarde. 🔥`);
+
+    // Variante 10: storytelling
+    variants.push(`Imagina un lugar donde ${this._getStorytellingHook(eventData?.category)}. Eso es ${title} ${location} ${date}. ${price}. Una experiencia diseñada para sorprenderte y dejarte recuerdos inolvidables. 🌟`);
 
     return variants.slice(0, count).map(v => v.replace(/\s+/g, ' ').trim());
+  }
+
+  _getCategorySpecificDescription(eventData) {
+    const title = eventData?.title || 'Tu evento';
+    const location = eventData?.location ? `en ${eventData.location}` : '';
+    const date = eventData?.date ? `el ${eventData.date}` : '';
+    const price = (eventData?.price === 0 || eventData?.price === '0') ? 'Gratis' : (eventData?.price ? `$${eventData.price}` : 'Precio por confirmar');
+    const category = eventData?.category?.toLowerCase();
+
+    const descriptions = [];
+
+    switch(category) {
+      case 'musica':
+      case 'music':
+      case 'conciertos':
+        descriptions.push(`🎵 ${title} ${location} ${date}. ${price}. Prepárate para vibrar con los mejores beats, artistas en vivo y una producción de primer nivel. Una noche que quedará en tu memoria. ¡Compra tu entrada!`);
+        descriptions.push(`🎸 Vive la magia de la música en vivo con ${title}. ${location} ${date}. ${price}. Escenario épico, sonido profesional y una atmósfera inigualable. No te pierdas este show.`);
+        break;
+      
+      case 'deportes':
+      case 'sports':
+        descriptions.push(`⚽ ${title} ${location} ${date}. ${price}. Acción, emoción y adrenalina pura. Ven a apoyar, competir o simplemente disfrutar del mejor deporte en vivo. ¡Trae a toda tu familia!`);
+        descriptions.push(`🏃‍♂️ Prepárate para sudar con ${title} ${location} ${date}. ${price}. Desafío físico, compañerismo y premios increíbles. Perfecto para deportistas de todos los niveles.`);
+        break;
+      
+      case 'tecnologia':
+      case 'technology':
+      case 'tech':
+        descriptions.push(`💻 ${title} ${location} ${date}. ${price}. Las últimas tendencias tech, demos en vivo, networking con innovadores y charlas de expertos. El futuro empieza aquí.`);
+        descriptions.push(`🚀 Innovación y tecnología se encuentran en ${title}. ${location} ${date}. ${price}. Aprende, conecta y descubre las herramientas que cambiarán tu carrera.`);
+        break;
+      
+      case 'gastronomia':
+      case 'food':
+      case 'comida':
+        descriptions.push(`🍽️ ${title} ${location} ${date}. ${price}. Un viaje culinario que deleitará tus sentidos. Chefs destacados, sabores únicos y una experiencia gastronómica inolvidable.`);
+        descriptions.push(`👨‍🍳 Descubre los secretos de la cocina en ${title} ${location} ${date}. ${price}. Degustaciones, talleres y recetas que podrás replicar en casa. ¡Para foodies!`);
+        break;
+      
+      case 'arte':
+      case 'art':
+        descriptions.push(`🎨 ${title} ${location} ${date}. ${price}. Sumérgete en el mundo del arte con exposiciones, talleres interactivos y la oportunidad de conocer a los artistas. Inspiración garantizada.`);
+        descriptions.push(`🖼️ La creatividad cobra vida en ${title} ${location} ${date}. ${price}. Obras únicas, técnicas innovadoras y un espacio para explorar tu lado artístico.`);
+        break;
+      
+      case 'anime':
+      case 'manga':
+        descriptions.push(`🎌 ${title} ${location} ${date}. ${price}. El evento definitivo para fans del anime y manga. Cosplay, proyecciones exclusivas, merchandising y una comunidad apasionada. ¡Kawaii!`);
+        descriptions.push(`⚡ Otakus, prepárense: ${title} ${location} ${date}. ${price}. Concursos de cosplay, stands de coleccionables, charlas con mangakas y mucho más. No faltes.`);
+        break;
+      
+      case 'fiestas':
+      case 'party':
+        descriptions.push(`🎉 ${title} ${location} ${date}. ${price}. La fiesta del año está aquí. DJ en vivo, luces espectaculares, barra libre y la mejor vibra. ¡Ven a bailar toda la noche!`);
+        descriptions.push(`🥳 Celebra a lo grande en ${title} ${location} ${date}. ${price}. Música, diversión sin límites y un ambiente increíble. Trae a tus amigos y prepárate para lo mejor.`);
+        break;
+    }
+
+    return descriptions.length > 0 ? descriptions : null;
+  }
+
+  _getStorytellingHook(category) {
+    const hooks = {
+      musica: 'la música te envuelve, los artistas te sorprenden y cada nota te hace vibrar',
+      deportes: 'la competencia enciende tu espíritu, la energía es contagiosa y cada jugada te emociona',
+      tecnologia: 'la innovación no tiene límites, las ideas se transforman en realidad y el futuro se crea hoy',
+      gastronomia: 'cada bocado cuenta una historia, los sabores te transportan y la experiencia es memorable',
+      arte: 'la creatividad no tiene barreras, cada obra te inspira y el talento brilla en cada rincón',
+      anime: 'tus personajes favoritos cobran vida, la comunidad te abraza y la pasión otaku reina',
+      fiestas: 'la música no para, las risas abundan y los mejores momentos se crean',
+      default: 'todo es posible, las conexiones son reales y cada momento cuenta'
+    };
+    
+    return hooks[category?.toLowerCase()] || hooks.default;
   }
 
   _getEmojiForCategory(category) {

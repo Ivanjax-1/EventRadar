@@ -97,24 +97,60 @@ class AIService {
     return variants;
   }
 
-  // Helpers para generar descripciones mock más variadas
+  // Helpers para generar descripciones mock más variadas y específicas por categoría
   _mockDescriptionShort(ctx) {
-    // Intentar extraer título desde el contexto (si aplica)
     const t = (ctx && ctx.title) ? ctx.title : 'Tu evento';
-    return `${t} es una experiencia imperdible: ven a disfrutar, conectar y vivir momentos únicos. ¡Entradas limitadas! 🎟️`;
+    const category = ctx?.category?.toLowerCase();
+    
+    // Descripciones cortas específicas por categoría
+    const templates = {
+      'musica': `🎵 ${t} trae la mejor música en vivo. Una noche inolvidable de ritmo y energía. ¡Entradas limitadas!`,
+      'deportes': `⚽ ${t} es la competencia que estabas esperando. Ven a vivir la emoción del deporte en su máxima expresión.`,
+      'tecnologia': `💻 ${t} reúne a los innovadores del futuro. Conoce las últimas tendencias tech y conecta con expertos.`,
+      'gastronomia': `🍕 ${t} es un festín para los sentidos. Sabores únicos, experiencias culinarias memorables.`,
+      'arte': `🎨 ${t} celebra la creatividad en todas sus formas. Inspiración, talento y cultura en un solo lugar.`,
+      'anime': `🎌 ${t} es el paraíso otaku que esperabas. Cosplay, merchandising y diversión sin límites.`,
+      'default': `${t} es una experiencia imperdible: ven a disfrutar, conectar y vivir momentos únicos. ¡Entradas limitadas! 🎟️`
+    };
+    
+    return templates[category] || templates.default;
   }
 
   _mockDescriptionBenefits(ctx) {
     const t = (ctx && ctx.title) ? ctx.title : 'Este evento';
-    const cat = (ctx && ctx.category) ? ` en la categoría ${ctx.category}` : '';
+    const cat = (ctx && ctx.category) ? ctx.category.toLowerCase() : '';
     const loc = (ctx && ctx.location) ? ` en ${ctx.location}` : '';
-    return `${t}${cat}${loc} ofrece: ponencias inspiradoras, networking con expertos y actividades prácticas. Perfecto para quienes buscan aprender y conectar. Reserva tu lugar hoy.`;
+    
+    const benefits = {
+      'musica': `actuaciones en vivo de artistas reconocidos, ambiente electrizante y producción de primer nivel`,
+      'deportes': `competencias emocionantes, atletas de alto rendimiento y premios para los ganadores`,
+      'tecnologia': `conferencias con líderes de la industria, demos de productos innovadores y networking exclusivo`,
+      'gastronomia': `degustaciones de chefs galardonados, maridajes únicos y experiencias culinarias interactivas`,
+      'arte': `exposiciones de artistas emergentes y consagrados, talleres creativos y tours guiados`,
+      'anime': `proyecciones exclusivas, concursos de cosplay con premios, venta de merchandising oficial`,
+      'default': `ponencias inspiradoras, networking con expertos y actividades prácticas`
+    };
+    
+    const benefit = benefits[cat] || benefits.default;
+    return `${t}${loc} ofrece: ${benefit}. Perfecto para quienes buscan experiencias memorables. Reserva tu lugar hoy.`;
   }
 
   _mockDescriptionNarrative(ctx) {
     const t = (ctx && ctx.title) ? ctx.title : 'El evento';
     const date = (ctx && ctx.date) ? ` el ${ctx.date}` : '';
-    return `Vive ${t}${date}: una jornada diseñada para sorprenderte con talento local, experiencias interactivas y sorpresas en el lugar. Ideal para amigos y familias. ¡No faltes! 🎉`;
+    const category = ctx?.category?.toLowerCase();
+    
+    const narratives = {
+      'musica': `🎶 Prepárate para ${t}${date}, una experiencia sonora que te hará vibrar. Desde el primer acorde hasta el último bis, vivirás momentos mágicos rodeado de verdaderos amantes de la música. ¡La fiesta del año!`,
+      'deportes': `🏆 ${t}${date} promete ser épico. Atletas dando el máximo, público apasionado y emociones a flor de piel. Trae a tus amigos y vivan juntos la gloria del deporte.`,
+      'tecnologia': `🚀 Bienvenido al futuro en ${t}${date}. Innovación, inteligencia artificial y tecnología de vanguardia se dan cita para transformar tu visión del mañana. ¡No te lo pierdas!`,
+      'gastronomia': `🍽️ ${t}${date} es un viaje culinario sin precedentes. Sabores que cuentan historias, chefs que son artistas y una experiencia gastronómica que recordarás por siempre.`,
+      'arte': `🎭 Déjate llevar por ${t}${date}. Arte que inspira, creatividad que transforma y cultura que nos une. Perfecto para almas sensibles y mentes curiosas.`,
+      'anime': `✨ Otakus, ¡su momento ha llegado! ${t}${date} reúne todo lo que amas: anime, manga, cosplay y una comunidad vibrante. Vive tu pasión al máximo.`,
+      'default': `Vive ${t}${date}: una jornada diseñada para sorprenderte con talento local, experiencias interactivas y sorpresas en el lugar. Ideal para amigos y familias. ¡No faltes! 🎉`
+    };
+    
+    return narratives[category] || narratives.default;
   }
 
   _mockDescriptionFormal(ctx) {
@@ -122,7 +158,20 @@ class AIService {
     const cat = (ctx && ctx.category) ? ` de ${ctx.category}` : '';
     const loc = (ctx && ctx.location) ? ` ubicado en ${ctx.location}` : '';
     const price = (ctx && ctx.price && ctx.price > 0) ? ` Valor de entrada: $${ctx.price}.` : ' Entrada gratuita.';
-    return `Le invitamos a participar en ${t}${cat}${loc}. Una actividad diseñada para brindar conocimiento, generar contactos profesionales y ofrecer una experiencia enriquecedora.${price} Se recomienda confirmar asistencia con anticipación. Cupos limitados.`;
+    const category = ctx?.category?.toLowerCase();
+    
+    const formalIntros = {
+      'musica': 'concierto musical de alto nivel',
+      'deportes': 'evento deportivo de categoría profesional',
+      'tecnologia': 'conferencia tecnológica especializada',
+      'gastronomia': 'experiencia gastronómica premium',
+      'arte': 'exhibición artística de vanguardia',
+      'anime': 'convención cultural especializada',
+      'default': 'actividad cultural y recreativa'
+    };
+    
+    const intro = formalIntros[category] || formalIntros.default;
+    return `Le invitamos cordialmente a participar en ${t}, un ${intro}${loc}. Una propuesta diseñada para brindar una experiencia enriquecedora, generar contactos valiosos y ofrecer contenido de calidad.${price} Se recomienda confirmar asistencia con anticipación. Cupos limitados.`;
   }
 
   _mockDescriptionCasual(ctx) {
@@ -130,34 +179,76 @@ class AIService {
     const cat = (ctx && ctx.category) ? ` de ${ctx.category}` : '';
     const loc = (ctx && ctx.location) ? ` en ${ctx.location}` : '';
     const price = (ctx && ctx.price && ctx.price > 0) ? `Por solo $${ctx.price}` : '¡Gratis!';
-    return `¡Hey! 👋 No te pierdas ${t}${cat}${loc}. ${price} te llevas una experiencia increíble, conoces gente copada y te diviertes un montón. ¿Vas a faltar? ¡Dale, anótate! 🚀`;
+    const category = ctx?.category?.toLowerCase();
+    
+    const casualPhrases = {
+      'musica': '🎸 ¡Música en vivo que te va a volar la cabeza!',
+      'deportes': '⚽ ¡La competencia más brutal del año!',
+      'tecnologia': '💻 ¡El evento tech más cool de la ciudad!',
+      'gastronomia': '🍕 ¡Prepárate para comer como nunca!',
+      'arte': '🎨 ¡Arte que te va a dejar sin palabras!',
+      'anime': '🎌 ¡El paraíso otaku que esperabas!',
+      'default': '¡Una experiencia increíble!'
+    };
+    
+    const phrase = casualPhrases[category] || casualPhrases.default;
+    return `¡Hey! 👋 No te pierdas ${t}${cat}${loc}. ${phrase} ${price} te llevas recuerdos inolvidables, conoces gente copada y te diviertes un montón. ¿Vas a faltar? ¡Dale, anótate! 🚀`;
   }
 
   _mockDescriptionSocialMedia(ctx) {
     const t = (ctx && ctx.title) ? ctx.title : 'nuestro evento';
-    const emoji = this._getEmojiForCategory(ctx?.category);
-    const hashtag = (ctx && ctx.category) ? `#${ctx.category.charAt(0).toUpperCase() + ctx.category.slice(1)}` : '#Evento';
-    return `${emoji} ¡IMPERDIBLE! ${t} es EL evento que estabas esperando. Entradas limitadas, experiencia única. ¿Te lo vas a perder? 👀 ¡Reserva YA! ${hashtag} #EventRadar #NoTeLoPierdas`;
+    const category = ctx?.category?.toLowerCase();
+    const emoji = this._getEmojiForCategory(category);
+    const hashtags = this._getHashtagsForCategory(category);
+    
+    return `${emoji} ¡IMPERDIBLE! ${t} es EL evento que estabas esperando. Entradas limitadas, experiencia única. ¿Te lo vas a perder? 👀 ¡Reserva YA! ${hashtags} #EventRadar #NoTeLoPierdas`;
   }
 
   _mockDescriptionOneLiner(ctx) {
     const t = (ctx && ctx.title) ? ctx.title : 'Este evento';
-    const emoji = this._getEmojiForCategory(ctx?.category);
-    return `${emoji} ${t}: la experiencia que transforma. ¡Asegura tu lugar hoy!`;
+    const category = ctx?.category?.toLowerCase();
+    const emoji = this._getEmojiForCategory(category);
+    
+    const oneLiners = {
+      'musica': 'donde la música cobra vida y las emociones vibran',
+      'deportes': 'donde campeones nacen y leyendas se forjan',
+      'tecnologia': 'donde el futuro se construye hoy',
+      'gastronomia': 'donde los sabores cuentan historias',
+      'arte': 'donde la creatividad no tiene límites',
+      'anime': 'donde los sueños otaku se hacen realidad',
+      'default': 'la experiencia que transforma'
+    };
+    
+    const oneLiner = oneLiners[category] || oneLiners.default;
+    return `${emoji} ${t}: ${oneLiner}. ¡Asegura tu lugar hoy!`;
   }
 
   _getEmojiForCategory(category) {
     const emojiMap = {
-      music: '🎵',
-      sports: '⚽',
-      technology: '💻',
-      food: '🍽️',
-      art: '🎨',
-      business: '💼',
-      education: '📚',
-      other: '🎉'
+      'musica': '🎵',
+      'deportes': '⚽',
+      'tecnologia': '💻',
+      'gastronomia': '🍕',
+      'arte': '🎨',
+      'anime': '🎌',
+      'negocios': '💼',
+      'educacion': '📚',
+      'default': '🎉'
     };
-    return emojiMap[category] || '🎉';
+    return emojiMap[category] || emojiMap.default;
+  }
+
+  _getHashtagsForCategory(category) {
+    const hashtagMap = {
+      'musica': '#Música #Concierto #MúsicaEnVivo',
+      'deportes': '#Deportes #Competencia #TeamWork',
+      'tecnologia': '#Tech #Innovación #Futuro',
+      'gastronomia': '#Gastronomía #Foodie #Sabores',
+      'arte': '#Arte #Cultura #Creatividad',
+      'anime': '#Anime #Otaku #Cosplay',
+      'default': '#Evento #Entretenimiento #NoTeLoPierdas'
+    };
+    return hashtagMap[category] || hashtagMap.default;
   }
 }
 
