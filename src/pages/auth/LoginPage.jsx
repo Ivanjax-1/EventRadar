@@ -282,30 +282,7 @@ const LoginPage = () => {
             </Link>
           </motion.div>
 
-          {/* Usuarios de prueba */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="mt-6 p-4 bg-purple-500/20 rounded-lg border border-purple-400/30"
-          >
-            <div className="text-center">
-              <p className="text-white/90 text-sm font-medium mb-2">
-                🧪 Para probar la aplicación
-              </p>
-              <div className="text-white/70 text-xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span>📧 Email:</span>
-                  <span className="font-mono bg-white/10 px-2 py-1 rounded">admin@eventradar.cl</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>🔒 Contraseña:</span>
-                  <span className="font-mono bg-white/10 px-2 py-1 rounded">123456</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
+          
           {/* Info adicional */}
           <motion.div
             initial={{ opacity: 0 }}

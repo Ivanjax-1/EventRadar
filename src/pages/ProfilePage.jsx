@@ -399,7 +399,7 @@ const ProfilePage = () => {
                   <div className="border-t border-white/20 pt-6">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                       <Heart className="h-5 w-5 text-pink-400" />
-                      Preferencias (para recomendaciones IA)
+                      Preferencias 
                     </h3>
 
                     <div className="space-y-4">
